@@ -1,3 +1,5 @@
+from .exceptions import ChromosomeNotStrError, PositionNotIntegerError, NameNotStrError, \
+                        StrandNotStrError, CoordinateFlipError
 
 
 class GenCoor:
@@ -29,12 +31,25 @@ class GenCoor:
     """
 
     def __init__(self, chrom, start, end, name="", strand=".", score=None, data=None):
-        assert isinstance(chrom, str), f"chromosome is not a string: {chrom}"
-        assert isinstance(start, int), f"start is not a integer: {start}"
-        assert isinstance(end, int), f"start is not a integer: {end}"
-        assert isinstance(name, str), f"chromosome is not a string: {name}"
-        assert isinstance(strand, str), f"chromosome is not a string: {strand}"
-        assert start <= end, f"start position ({start}) is larger than end position ({end})"
+
+        if not isinstance(chrom, str):
+            print(f"chromosome is not a string: {chrom}")
+            raise ChromosomeNotStrError
+        if not isinstance(start, int):
+            print(f"start is not a integer: {start}")
+            raise PositionNotIntegerError
+        if not isinstance(end, int):
+            print(f"end is not a integer: {end}")
+            raise PositionNotIntegerError
+        if not isinstance(name, str):
+            print(f"name is not a string: {name}")
+            raise NameNotStrError
+        if not isinstance(strand, str):
+            print(f"strand is not a string: {name}")
+            raise StrandNotStrError
+        if start > end:
+            print(f"start position ({start}) is larger than end position ({end})")
+            raise CoordinateFlipError
 
         self.chrom = chrom
         self.start = start
@@ -44,61 +59,98 @@ class GenCoor:
         self.score = score
         self.data = data
 
-
     def __len__(self):
         """Return the length of the coordinate."""
         return self.end - self.start
-
 
     def __str__(self):
         """Return a readable string."""
         return f"{str(self.start)}-{str(self.end)}"
 
-
     def ___repr__(self):
         """Return all information as a string."""
         return f"{self.chrom}:{str(self.start)}-{str(self.end)} {self.strand}"
 
-    # """A Python class for storing and calculating genomic coordinates"""
-    # def __init__(self, name):
-    #     self.name = name
-    #     self.coordinates = None
-    #     self.sorted = False
-    #     # self.coordinates = np.array([[1, 12]], dtype=object)
-    #
-    # def load_bed(self, filepath):
-    #     self.sorted = False
-    #
-    #     coordinates = []
-    #     with open(filepath) as f:
-    #         for line in f:
-    #             if not line.startswith("#"):
-    #                 l = line.strip().split()
-    #                 if len(l) == 6:
-    #                     coordinates.append([l[0], int(l[1]), int(l[2]), l[3],
-    #                                         float(l[4]), l[5]])
-    #                 elif len(l) < 4:
-    #                     coordinates.append([l[0], int(l[1]), int(l[2]), l[3],
-    #                                         float(l[4]), l[5]])
-    #
-    #     self.coordinates = np.array(coordinates, dtype=object)
-    #
-    # def sort(self):
-    #     self.sorted = True
-    #     self.coordinates = self.coordinates[self.coordinates[:, 1].argsort()]
-    #     self.coordinates = self.coordinates[self.coordinates[:, 0].argsort()]
-    #
-    # def add(self, coordinate):
-    #     coordinate[1] = int(coordinate[1])
-    #     coordinate[2] = int(coordinate[2])
-    #     coordinate[4] = float(coordinate[4])
-    #     self.coordinates = np.vstack((self.coordinates, np.array(coordinate, dtype=object)))
-    #     self.sorted = False
-    #
-    # # def write(self, filepath):
-    # #
-    # def __len__(self):
-    #     return self.coordinates.shape[0]
+    def capital_name(self):
+        """Capitalize the name of the coordinate."""
+        self.name = self.name.upper()
+
+    def overlap(self, a_gencoor, strandness=False):
+        """Return True if it overlaps with the given genomic coordinate, otherwise False."""
+        res = False
+        # region against region
+        if self.chrom == a_gencoor.chrom and \
+                self.start < a_gencoor.end and \
+                self.end > a_gencoor.start:
+            if strandness:
+                if self.strand == a_gencoor.strand:
+                    res = True
+            else:
+                res = True
+        # single point to single point
+        elif self.chrom == a_gencoor.chrom and \
+                self.start == a_gencoor.end and \
+                self.end == a_gencoor.start:
+            res = True
+        return res
+
+    def distance(self, a_gencoor, sign=False):
+        """Return the distance between two genomic coordinates. '0' means overlapping and None means they are \
+        on different chromosomes and their distance cannot be calculated. If sign is activated, \
+        positive values mean that the given query coordinate is on the downstream of the reference coordinate. \
+        Negative values mean opposite, which is upstream."""
+
+        if self.overlap(a_gencoor):
+            return 0
+        else:
+            if self.chrom == a_gencoor.chrom:
+                if self.start < a_gencoor.start:
+                    dis = a_gencoor.start - self.end
+                else:
+                    dis = a_gencoor.end - self.start
+            else:
+                return None
+
+        if sign:
+            return dis
+        else:
+            return abs(dis)
 
 
+class GenCoorSet:
+    """A Python class for handling a set of genomic coordinates.
+
+        Parameters
+        ----------
+        name : string
+        Name of this set
+
+        Attributes
+        ----------
+        list : list
+        A list containing all the genomic coordinates
+        sort : boolean
+        A label showing whether this list is sorted or not
+
+        Examples
+        --------
+        >>> regions = GenCoorSet(name="A_set")
+        >>> len(regions)
+
+
+        """
+
+    def __init__(self, name):
+        self.list = []
+        self.sort = False
+        self.name = name
+
+    def add(self, gencoor):
+        """Add a genomic coordinate into the list"""
+        self.list.append(gencoor)
+        self.sort = False
+
+    def len(self):
+        """Return the length of the list of genomic coordinates"""
+        return len(self.list)
 
