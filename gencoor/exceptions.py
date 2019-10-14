@@ -32,3 +32,7 @@ class NameNotStrError(Error):
 class StrandNotStrError(Error):
     """Raised when the input strand is not a string"""
     pass
+
+class OverlapTypeError(Error):
+    """Raised when the mode of overlap is not properly defined"""
+    pass

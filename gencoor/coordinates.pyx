@@ -1,9 +1,6 @@
-# from .exceptions import ChromosomeNotStrError, PositionNotIntegerError, NameNotStrError, \
-#                         StrandNotStrError, CoordinateFlipError
-# # from operator import itemgetter
-# import copy
-# from .util import OverlapType
-# from libcpp cimport bool
+
+from .exceptions import OverlapTypeError
+
 
 
 
@@ -87,7 +84,8 @@ class GenCoor:
 
     """
 
-    def __init__(self, str chrom, int start, int end, str name="", str strand=".", score=0, str data=""):
+    def __init__(self, str chrom, int start, int end, str name="",
+                 str strand=".", score=0, str data=""):
 
         # if not isinstance(chrom, str):
         #     print(f"chromosome is not a string: {chrom}")
@@ -120,6 +118,13 @@ class GenCoor:
         """Return the length of the coordinate."""
         return self.end - self.start
 
+    def __hash__(self):
+        return hash((self.chrom, self.start, self.end, self.strand))
+
+    def __eq__(self, other):
+        return (self.chrom, self.start, self.end, self.strand) == \
+               (other.chrom, other.start, other.end, other.strand)
+
     def __str__(self):
         """Return a readable string."""
         # return f"{str(self.start)}-{str(self.end)}"
@@ -134,6 +139,43 @@ class GenCoor:
     def __repr__(self):
         """Return all information as a string."""
         return f"{self.chrom}:{str(self.start)}-{str(self.end)} {self.strand}"
+
+    def __cmp__(self, region):
+       """Return negative value if x < y, zero if x == y and strictly positive if x > y."""
+       if self.chrom < region.chrom:
+           return -1
+       elif self.chrom > region.chrom:
+           return 1
+       else:
+           if self.start < region.start:
+               return -1
+           elif self.start > region.start:
+               return 1
+           else:
+               if self.end < region.end:
+                   return -1
+               elif self.end > region.end:
+                   return 1
+               else:
+                   return 0
+
+    def __lt__(self, other):
+        return self.__cmp__(other) < 0
+
+    def __gt__(self, other):
+        return self.__cmp__(other) > 0
+
+    def __eq__(self, other):
+        return self.__cmp__(other) == 0
+
+    def __le__(self, other):
+        return self.__cmp__(other) <= 0
+
+    def __ge__(self, other):
+        return self.__cmp__(other) >= 0
+
+    def __ne__(self, other):
+        return self.__cmp__(other) != 0
 
     def str_split(self, filetype="BED"):
         if filetype=="BED":
@@ -373,15 +415,26 @@ class GenCoorSet:
         return chroms, starts, ends, names, scores, strands, datas
 
     def split_by_strands(self):
-        """Return two GenCoorSets according to their strandness: forward and reverse."""
-        strand_FWD = GenCoorSet(name=self.name+"_FWD")
-        strand_REV = GenCoorSet(name=self.name + "_REV")
+        """Return a dictionary with unique strand as the keys and GenCoorSet as the values."""
+        res = {}
         for r in self:
-            if r.strand == "+":
-                strand_FWD.add(r)
-            elif r.strand == "-":
-                strand_REV.add(r)
-        return strand_FWD, strand_REV
+            if r.strand not in res.keys():
+                res[r.strand] = GenCoorSet(name=r.strand)
+                res[r.strand].add(r)
+            else:
+                res[r.strand].add(r)
+        return res
+
+    def split_by_chromosome(self):
+        """Return a dictionary with unique chromosome as the keys and GenCoorSet as the values."""
+        res = {}
+        for r in self:
+            if r.chrom not in res.keys():
+                res[r.chrom] = GenCoorSet(name=r.chrom)
+                res[r.chrom].add(r)
+            else:
+                res[r.chrom].add(r)
+        return res
 
     def merge(self, w_return=False, strand_specific=False):
         """Merge the regions within the GenCoorSet
@@ -474,137 +527,137 @@ class GenCoorSet:
             else:
                 self.list = z
 
+    def intersect(self, gcs, mode="overlap", strand_specific=False):
+        """Get intersection regions between two GenCoorSets
 
-    def intersect(self, gcs, mode=OverlapType.OVERLAP):
-    
+            Parameters
+            ----------
+            mode : ['overlap', 'original', 'complete_included']
+            strand_specific : If TRUE, only the regions on the same strand will be calcuated.
+        """
+        cdef int i = 0
+        cdef int j = 0
+        cdef int prej = 0
+        cdef int last_i = len(self) - 1
+        cdef int last_j = len(gcs) - 1
+        cdef int cont_loop = 1
+        cdef int cont_overlap = 0
+
+        def check_i_end(i, last_i, cont_loop):
+            if i < last_i:
+                i += 1
+            else:
+                cont_loop = 0
+            return i, cont_loop
+
         z = GenCoorSet(self.name)
         if len(self) == 0 or len(gcs) == 0:
             return z
         else:
-            # If there is overlap within self or y, they should be merged first.
-            a = copy.deepcopy(self)
-            b = copy.deepcopy(gcs)
-            if not a.sorted: a.sort()
-            if not b.sorted: b.sort()
-            if mode == OverlapType.OVERLAP:
-                a.merge()
-                b.merge()
-
-            iter_a = iter(a)
-            s = iter_a.next()
-            last_j = len(b) - 1
-            j = 0
-            cont_loop = True
-            pre_inter = 0
-            cont_overlap = False
+            if not self.sorted:
+                self.sort()
+            if not gcs.sorted:
+                gcs.sort()
+            chroms1, starts1, ends1, names1, scores1, strands1, datas1 = self.to_lists()
+            chroms2, starts2, ends2, names2, scores2, strands2, datas2 = gcs.to_lists()
             ####################### OverlapType.OVERLAP ###############################
-            if mode == OverlapType.OVERLAP:
-                while cont_loop:
+            if mode == "overlap":
+                while cont_loop == 1:
                     # When the regions overlap
-                    if s.overlap(b[j]):
-                        z.add(GenomicRegion(chrom=s.chrom,
-                                            initial=max(s.initial, b[j].initial),
-                                            final=min(s.final, b[j].final),
-                                            name=s.name,
-                                            orientation=s.orientation,
-                                            data=s.data,
-                                            proximity=s.proximity))
-
-                        if not cont_overlap:
-                            pre_inter = j
+                    if GenCoor.overlap_pairing(chroms1[i], starts1[i], ends1[i], strands1[i],
+                                               chroms2[j], starts2[j], ends2[j], strands2[j],
+                                               strand_specific=strand_specific):
+                        z.add(GenCoor(chrom=chroms1[i],
+                                      start=max(starts1[i], starts2[j]),
+                                      end=min(ends1[i], ends2[j]),
+                                      name=names1[i],
+                                      strand=strands1[i],
+                                      data=datas1[i]))
+                        if cont_overlap == 0:
+                            prej = j
                         if j == last_j:
-                            try:
-                                s = iter_a.next()
-                            except:
-                                cont_loop = False
+                            i, cont_loop = check_i_end(i, last_i, cont_loop)
                         else:
                             j += 1
-                        cont_overlap = True
+                        cont_overlap = 1
 
-                    elif s < b[j]:
-                        try:
-                            s = iter_a.next()
-                            if s.chrom == b[j].chrom and pre_inter > 0:
-                                j = pre_inter
-                            cont_overlap = False
-                        except:
-                            cont_loop = False
-
-                    elif s > b[j]:
+                    elif self[i] < gcs[j]:
+                        if i < last_i:
+                            i += 1
+                            if chroms1[i] == chroms2[j]:
+                                j = prej
+                            cont_overlap = 0
+                        else:
+                            cont_loop = 0
+                    elif self[i] > gcs[j]:
                         if j == last_j:
-                            cont_loop = False
+                            cont_loop = 0
                         else:
                             j += 1
-                            cont_overlap = False
+                            cont_overlap = 0
                     else:
-                        try:
-                            s = iter_a.next()
-                        except:
-                            cont_loop = False
+                        i, cont_loop = check_i_end(i, last_i, cont_loop)
 
             ####################### OverlapType.ORIGINAL ###############################
-            if mode == OverlapType.ORIGINAL:
+            elif mode == "original":
                 while cont_loop:
                     # When the regions overlap
-                    if s.overlap(b[j]):
-                        z.add(s)
-                        try:
-                            s = iter_a.next()
-                        except:
-                            cont_loop = False
-                    elif s < b[j]:
-                        try:
-                            s = iter_a.next()
-                        except:
-                            cont_loop = False
-                    elif s > b[j]:
+                    if GenCoor.overlap_pairing(chroms1[i], starts1[i], ends1[i], strands1[i],
+                                               chroms2[j], starts2[j], ends2[j], strands2[j],
+                                               strand_specific=strand_specific):
+                        z.add(self[i])
+                        i, cont_loop = check_i_end(i, last_i, cont_loop)
+                    elif self[i] < gcs[j]:
+                        i, cont_loop = check_i_end(i, last_i, cont_loop)
+                    elif self[i] > gcs[j]:
                         if j == last_j:
-                            cont_loop = False
+                            cont_loop = 0
                         else:
                             j += 1
                     else:
-                        try:
-                            s = iter_a.next()
-                        except:
-                            cont_loop = False
+                        i, cont_loop = check_i_end(i, last_i, cont_loop)
             ####################### OverlapType.COMP_INCL ###############################
-            if mode == OverlapType.COMP_INCL:
+            elif mode == "complete_included":
                 while cont_loop:
                     # When the regions overlap
-                    if s.overlap(b[j]):
-                        if s.initial >= b[j].initial and s.final <= b[j].final:
-                            z.add(s)
-                        if not cont_overlap: pre_inter = j
+                    if GenCoor.overlap_pairing(chroms1[i], starts1[i], ends1[i], strands1[i],
+                                               chroms2[j], starts2[j], ends2[j], strands2[j],
+                                               strand_specific=strand_specific):
+                        if starts1[i] >= starts2[j] and ends1[i] <= ends2[j]:
+                            z.add(self[i])
+                        if cont_overlap==0:
+                            prej = j
                         if j == last_j:
-                            try:
-                                s = iter_a.next()
-                            except:
-                                cont_loop = False
+                            i, cont_loop = check_i_end(i, last_i, cont_loop)
                         else:
                             j += 1
-                        cont_overlap = True
+                        cont_overlap = 1
 
-                    elif s < b[j]:
-                        try:
-                            s = iter_a.next()
-                            if s.chrom == b[j].chrom and pre_inter > 0:
-                                j = pre_inter
-                            cont_overlap = False
-                        except:
-                            cont_loop = False
-
-                    elif s > b[j]:
+                    elif self[i] < gcs[j]:
+                        if i < last_i:
+                            if chroms1[i] == chroms2[j] and prej > 0:
+                                j = prej
+                            i += 1
+                            cont_overlap = 0
+                        else:
+                            cont_loop = 0
+                    elif self[i] > gcs[j]:
                         if j == last_j:
-                            cont_loop = False
+                            cont_loop = 0
                         else:
                             j += 1
-                            cont_overlap = False
+                            cont_overlap = 0
                     else:
-                        try:
-                            s = iter_a.next()
-                        except:
-                            cont_loop = False
-
-            if rm_duplicates: z.remove_duplicates()
-            # z.sort()
+                        i, cont_loop = check_i_end(i, last_i, cont_loop)
+            else:
+                print("Please define the mode as one of the three options: overlap, original, or complete_included.")
+                raise OverlapTypeError
             return z
+
+    # def standard_chromosome(self, organism):
+    #
+    # def total_coverage(self):
+    #
+    # def rm_duplicates(self):
+    #
+    # def

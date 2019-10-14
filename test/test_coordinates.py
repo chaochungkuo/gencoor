@@ -219,11 +219,318 @@ def test_merge():
     assert res[0].end == 50
     assert res[0].strand == "."
     res = genset.merge(w_return=True, strand_specific=True)
-    print(res[0])
-    print(res[1])
-    print(res[2])
     assert len(res) == 3
     assert res[0].start == 10
     assert res[0].end == 20
     assert res[0].strand == "+"
+def test_intersect_1():
+    """
+    Two empty sets
+    A : none
+    B : none
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset2 = GenCoorSet(name="Test_set")
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+def test_intersect_2():
+    """
+    One empty set
+    A :   -----
+    B : none
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+"))
+    genset2 = GenCoorSet(name="Test_set")
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+def test_intersect_3():
+    """
+    A : none
+    B :   -----
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+"))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+def test_intersect_4():
+    """
+    No overlapping
+    A : ------      ---------               -------
+    B :        ----          ------  ------
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=11, end=20, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=33, end=38, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=7, end=9, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=20, end=25, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=26, end=31, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_5():
+    """
+    End-to-end attach
+    A : ------      ------
+    B :       ------
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=11, end=20, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=5, end=11, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_6():
+    """
+    No length attach
+    A : .      .
+    B :    .   .
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=2, end=2, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=20, end=20, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=5, end=5, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=20, end=20, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 1
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 1
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 1
+
+def test_intersect_7():
+    """
+    Perfect overlapping
+    A : ------
+    B : ------
+    R : ------
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=500, end=550, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=600, end=650, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=700, end=750, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=725, end=800, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=500, end=550, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=600, end=650, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=700, end=750, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=725, end=800, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 6
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 5
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 5
+
+def test_intersect_8():
+    """
+    One overlapping region
+    A : ------
+    B :     --------
+    R1:     --       (overlap)
+    R2: ------       (original)
+    R3:              (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=7, end=20, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 1
+    assert res[0].start == 7
+    assert res[0].end == 10
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 1
+    assert res[0].start == 1
+    assert res[0].end == 10
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_9():
+    """
+    Two simple overlapping regions
+    A : -------      --------
+    B :     -------------
+    R1:     ---      ----     (overlap)
+    R2: -------      -------- (original)
+    R3:                       (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=26, end=35, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=7, end=30, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 2
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 2
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_10():
+    """
+    Two separately overlapping regions
+    A : -------      --------
+    B :     -----        --------
+    R1:     ---          ----     (overlap)
+    R2: -------      --------     (original)
+    R3:                           (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=26, end=35, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=7, end=15, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=30, end=40, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 2
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 2
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_11():
+    """
+    Many various overlapping (mixed)
+    A :   ------------------            --------   ---------
+    B : ----   -------    ------            ----------
+    R1:   --   -------    --                ----   ---       (overlap)
+    R2:   ------------------            --------   --------- (original)
+    R3:                                                      (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=3, end=30, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=50, end=60, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=70, end=85, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=10, end=19, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=27, end=35, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=55, end=75, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 5
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_12():
+    """
+    Different chromosomes
+    A : chr1  -------
+    B : chr2  -------
+    R : none
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=10, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr2", start=1, end=10, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 0
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_13():
+    """
+    Completely included overlapping
+    A : ---------------------------
+    B : ----    ------       -----------
+    R1: ----    ------       ------      (overlap)
+    R2: ---------------------------      (original)
+    R3:                                  (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=10, end=19, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=45, end=60, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 1
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 0
+
+def test_intersect_14():
+    """
+    A : ----    ------       -----------
+    B : ---------------------------
+    R1: ----    ------       ------      (overlap)
+    R2: ----    ------       ----------- (original)
+    R3: ----    ------                   (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=10, end=19, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=45, end=60, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 2
+
+def test_intersect_15():
+    """
+    A : --------------         -------
+            ------
+    B :       -----          ----------------
+    R1:       -----            -------      (overlap)
+              ----
+    R2: --------------         -------      (original)
+            ------
+    R3:                        -------      (comp_incl)
+    """
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=20, end=40, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=70, end=80, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=25, end=45, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=65, end=95, name="test", strand="."))
+    res = genset1.intersect(genset2, mode="overlap")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="original")
+    assert len(res) == 3
+    res = genset1.intersect(genset2, mode="complete_included")
+    assert len(res) == 1
 
