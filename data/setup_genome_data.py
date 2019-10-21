@@ -13,14 +13,10 @@ Options:
     --gtf                    Download the annotation GTF file [default: False]
 """
 from docopt import docopt
-import sys
 import os
 import gzip
-import ftplib
-from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from tqdm import tqdm
 import urllib.request
-from contextlib import closing
 
 latest_fasta = {
 "mm9":"ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M1/NCBIM37.genome.fa.gz",
