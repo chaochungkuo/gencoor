@@ -1,8 +1,4 @@
-
 from .exceptions import OverlapTypeError
-
-
-
 
 class GenCoorFileIO:
     class Bed:

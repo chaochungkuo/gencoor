@@ -36,3 +36,7 @@ class StrandNotStrError(Error):
 class OverlapTypeError(Error):
     """Raised when the mode of overlap is not properly defined"""
     pass
+
+class GenomeUndefinedError(Error):
+    """Raised when the input genome is not defined in the data.config.user"""
+    pass

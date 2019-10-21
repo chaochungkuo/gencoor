@@ -2,6 +2,7 @@ import setuptools
 import io
 import os
 import re
+import shutil
 from sys import platform
 from Cython.Build import cythonize
 from setuptools.command.install import install
@@ -11,6 +12,9 @@ Installs gencoor with standard setuptools options.
 
 Authors: Joseph Chao-Chung Kuo
 """
+
+# if the environment variable is set, use it; otherwise use the home directory as a default
+data_path = os.path.expanduser(os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
 
 def read(*names, **kwargs):
     with io.open(
@@ -35,7 +39,7 @@ class CustomInstallCommand(install):
         config.write("[" + genome + "]\n")
         config.write("genome: " + os.path.join(genome, "genome_" + genome + ".fa\n"))
         config.write("chromosome_sizes: " + os.path.join(genome, "chrom.sizes." + genome + "\n"))
-        config.write("genes_Gencode: " + os.path.join(genome, "genes_" + genome + ".bed\n"))
+        config.write("genes: " + os.path.join(genome, "genes_" + genome + ".bed\n"))
         config.write("annotation: " + os.path.join(genome, latest_GTFs[genome] + "\n"))
         config.write("gene_alias: " + os.path.join(genome, "alias_" + genome_organism[genome] + ".txt\n\n"))
 
@@ -52,16 +56,16 @@ class CustomInstallCommand(install):
                            "hg19": "human",
                            "hg38": "human"}
 
-        # if the environment variable is set, use it; otherwise use the home directory as a default
-        gencoordata_location = os.path.expanduser(
-            os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
-
+        # # if the environment variable is set, use it; otherwise use the home directory as a default
+        # self.data_path = os.path.expanduser(
+        #     os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
+        self.data_path = data_path
         # Creating Data Path
-        if not os.path.exists(gencoordata_location):
-            os.makedirs(gencoordata_location)
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path)
 
         # Creating data.config
-        data_config_file_name = os.path.join(gencoordata_location, "data.config")
+        data_config_file_name = os.path.join(self.data_path, "data.config")
         # if not os.path.isfile(data_config_file_name):
         data_config_file = open(data_config_file_name, "w")
         data_config_file.write(
@@ -72,7 +76,7 @@ class CustomInstallCommand(install):
         data_config_file.close()
 
         # Creating data.config.user, but only if not already present
-        user_config_file_name = os.path.join(gencoordata_location, "data.config.user")
+        user_config_file_name = os.path.join(self.data_path, "data.config.user")
         if not os.path.isfile(user_config_file_name):
             user_config_file = open(user_config_file_name, "w")
 
@@ -91,6 +95,18 @@ class CustomInstallCommand(install):
 
         install.run(self)
 
+    def copy_light_genome_files(self):
+        data_dir = read("data")
+        print(os.listdir(data_dir))
+        for entry in os.listdir(data_dir):
+            dest = os.path.join(self.data_path, entry)
+            if os.path.isdir(os.path.join(data_dir, entry)):
+                shutil.copytree(os.path.join(data_dir, entry), dest)
+        # genomes = ["hg38", "hg"]
+        # for
+        # shutil.copytree(src, dest)
+        # shutil.copyfile(source, destintion)
+
 current_version = find_version("gencoor", "__version__.py")
 
 ###################################################################################################
@@ -102,7 +118,24 @@ if platform not in supported_platforms:
     print("ERROR: This package currently supports only unix-based systems (Linux and MAC OS X).")
     exit(0)
 
+###################################################################################################
+# Copying the data files
+###################################################################################################
+data_dir = os.path.join(os.path.dirname(__file__), "data")
 
+shutil.copy(os.path.join(data_dir, "setup_genome_data.py"),
+            os.path.join(data_path, "setup_genome_data.py"))
+for entry in os.listdir(data_dir):
+    genome_dir = os.path.join(data_dir, entry)
+    dest_genome_dir = os.path.join(data_path, entry)
+
+    if os.path.isdir(genome_dir):
+        if not os.path.exists(dest_genome_dir):
+            os.makedirs(dest_genome_dir)
+        for file in os.listdir(genome_dir):
+            source_f = os.path.join(data_dir, entry, file)
+            destin_f = os.path.join(data_path, entry, file)
+            shutil.copy(source_f, destin_f)
 #############################
 
 with open("README.md", "r") as fh:
