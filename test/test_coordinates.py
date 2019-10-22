@@ -144,6 +144,97 @@ def test_GenCoor_extract_bed12():
     assert len(g1_extracts[0]) == 567
     assert len(g1_extracts[1]) == 488
 
+
+        #
+        # '3end as center'
+        # '5end as 5end'
+        # '3end as 3end'
+
+def test_GenCoor_relocate1():
+    g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand=".")
+    r = g1.relocate(mode='center as center', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='5end as center', inplace=False)
+    assert r.start is 5
+    assert r.end is 15
+    r = g1.relocate(mode='3end as center', inplace=False)
+    assert r.start is 15
+    assert r.end is 25
+    r = g1.relocate(mode='5end as 5end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='3end as 3end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+def test_GenCoor_relocate2():
+    g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+")
+    r = g1.relocate(mode='center as center', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='5end as center', inplace=False)
+    assert r.start is 5
+    assert r.end is 15
+    r = g1.relocate(mode='3end as center', inplace=False)
+    assert r.start is 15
+    assert r.end is 25
+    r = g1.relocate(mode='5end as 5end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='3end as 3end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+def test_GenCoor_relocate3():
+    g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="-")
+    r = g1.relocate(mode='center as center', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='5end as center', inplace=False)
+    assert r.start is 15
+    assert r.end is 25
+    r = g1.relocate(mode='3end as center', inplace=False)
+    assert r.start is 5
+    assert r.end is 15
+    r = g1.relocate(mode='5end as 5end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+    r = g1.relocate(mode='3end as 3end', inplace=False)
+    assert r.start is 10
+    assert r.end is 20
+def test_GenCoor_relocate4():
+    g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+")
+    r = g1.relocate(mode='center as center', width=2, inplace=False)
+    assert r.start is 14
+    assert r.end is 16
+    r = g1.relocate(mode='5end as center', width=2, inplace=False)
+    assert r.start is 9
+    assert r.end is 11
+    r = g1.relocate(mode='3end as center', width=2, inplace=False)
+    assert r.start is 19
+    assert r.end is 21
+    r = g1.relocate(mode='5end as 5end', width=2, inplace=False)
+    assert r.start is 10
+    assert r.end is 12
+    r = g1.relocate(mode='3end as 3end', width=2, inplace=False)
+    assert r.start is 18
+    assert r.end is 20
+def test_GenCoor_relocate5():
+    g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="-")
+    r = g1.relocate(mode='center as center', width=2, inplace=False)
+    assert r.start is 14
+    assert r.end is 16
+    r = g1.relocate(mode='5end as center', width=2, inplace=False)
+    assert r.start is 19
+    assert r.end is 21
+    r = g1.relocate(mode='3end as center', width=2, inplace=False)
+    assert r.start is 9
+    assert r.end is 11
+    r = g1.relocate(mode='5end as 5end', width=2, inplace=False)
+    assert r.start is 18
+    assert r.end is 20
+    r = g1.relocate(mode='3end as 3end', width=2, inplace=False)
+    assert r.start is 10
+    assert r.end is 12
 #################################################################
 #### Tests on GenCoorSet
 
@@ -205,9 +296,9 @@ def test_extend():
 def test_split_by_strands():
     genset = GenCoorSet(name="Test_set")
     genset.load(filename="/Users/jovesus/rgtdata/hg38/genes_Gencode_hg38.bed", filetype="BED")
-    genset_FWD, genset_REV = genset.split_by_strands()
-    assert set([g.strand for g in genset_FWD]) == set(["+"])
-    assert set([g.strand for g in genset_REV]) == set(["-"])
+    res = genset.split_by_strands()
+    assert set([g.strand for g in res["+"]]) == set(["+"])
+    assert set([g.strand for g in res["-"]]) == set(["-"])
 def test_merge():
     genset = GenCoorSet(name="Test_set")
     genset.add(GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+"))

@@ -15,6 +15,9 @@ Authors: Joseph Chao-Chung Kuo
 
 # if the environment variable is set, use it; otherwise use the home directory as a default
 data_path = os.path.expanduser(os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
+# Creating Data Path
+if not os.path.exists(data_path):
+    os.makedirs(data_path)
 
 def read(*names, **kwargs):
     with io.open(
@@ -37,11 +40,11 @@ class CustomInstallCommand(install):
 
     def write_genome_data(self, config, genome, latest_GTFs, genome_organism):
         config.write("[" + genome + "]\n")
-        config.write("genome: " + os.path.join(genome, "genome_" + genome + ".fa\n"))
-        config.write("chromosome_sizes: " + os.path.join(genome, "chrom.sizes." + genome + "\n"))
-        config.write("genes: " + os.path.join(genome, "genes_" + genome + ".bed\n"))
-        config.write("annotation: " + os.path.join(genome, latest_GTFs[genome] + "\n"))
-        config.write("gene_alias: " + os.path.join(genome, "alias_" + genome_organism[genome] + ".txt\n\n"))
+        config.write("genome: " + os.path.join(data_path, genome, "genome_" + genome + ".fa\n"))
+        config.write("chromosome_sizes: " + os.path.join(data_path, genome, "chrom.sizes." + genome + "\n"))
+        config.write("genes: " + os.path.join(data_path, genome, "genes_" + genome + ".bed\n"))
+        config.write("annotation: " + os.path.join(data_path, genome, latest_GTFs[genome] + "\n"))
+        config.write("gene_alias: " + os.path.join(data_path, genome, "alias_" + genome_organism[genome] + ".txt\n\n"))
 
     def run(self):
         ###################################################################################################
@@ -56,17 +59,12 @@ class CustomInstallCommand(install):
                            "hg19": "human",
                            "hg38": "human"}
 
-        # # if the environment variable is set, use it; otherwise use the home directory as a default
-        # self.data_path = os.path.expanduser(
-        #     os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
-        self.data_path = data_path
-        # Creating Data Path
-        if not os.path.exists(self.data_path):
-            os.makedirs(self.data_path)
+        # if the environment variable is set, use it; otherwise use the home directory as a default
+        self.data_path = os.path.expanduser(
+            os.getenv("GENCOORDATA", os.path.join(os.getenv("HOME"), "gencoor_data")))
 
         # Creating data.config
         data_config_file_name = os.path.join(self.data_path, "data.config")
-        # if not os.path.isfile(data_config_file_name):
         data_config_file = open(data_config_file_name, "w")
         data_config_file.write(
             "# Configuration file loaded at rgt startup. CAREFUL: any changes shall be overwritten\n"
@@ -92,20 +90,7 @@ class CustomInstallCommand(install):
             user_config_file.write("#gene_regions: undefined\n")
             user_config_file.write("#annotation: undefined\n")
             user_config_file.write("#gene_alias: undefined\n\n")
-
         install.run(self)
-
-    def copy_light_genome_files(self):
-        data_dir = read("data")
-        print(os.listdir(data_dir))
-        for entry in os.listdir(data_dir):
-            dest = os.path.join(self.data_path, entry)
-            if os.path.isdir(os.path.join(data_dir, entry)):
-                shutil.copytree(os.path.join(data_dir, entry), dest)
-        # genomes = ["hg38", "hg"]
-        # for
-        # shutil.copytree(src, dest)
-        # shutil.copyfile(source, destintion)
 
 current_version = find_version("gencoor", "__version__.py")
 

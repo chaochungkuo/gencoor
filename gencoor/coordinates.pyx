@@ -264,6 +264,73 @@ class GenCoor:
                                strand=self.strand))
         return res
 
+    def relocate(self, str mode, int width=-1, inplace=True):
+        """Relocate the region with defined mode and defined length
+
+        Parameters
+        ----------
+        mode : string
+        'center as center'
+        '5end as center'
+        '3end as center'
+        '5end as 5end'
+        '3end as 3end'
+
+        width : None or integer
+        Define the width of the new region. If not defined, the original width is used.
+        """
+        def get_5end():
+            if self.strand == "-":
+                return self.end
+            else:
+                return self.start
+        def get_3end():
+            if self.strand == "-":
+                return self.start
+            else:
+                return self.end
+        def as_5end(ref_point, width):
+            if self.strand == "-":
+                return ref_point-width, ref_point
+            else:
+                return ref_point, ref_point+width
+        def as_3end(ref_point, width):
+            if self.strand == "-":
+                return ref_point, ref_point+width
+            else:
+                return ref_point-width, ref_point
+        def as_center(ref_point, half_width):
+            return ref_point-half_width, ref_point+half_width
+
+        cdef int half_width
+        cdef int ref_point
+        cdef int s
+        cdef int e
+
+        if width < 0:
+            width = len(self)
+        half_width = int(width/2)
+        if mode == 'center as center':
+            ref_point = int((self.start + self.end)/2)
+            s, e = as_center(ref_point, half_width)
+        elif mode == '5end as center':
+            ref_point = get_5end()
+            s, e = as_center(ref_point, half_width)
+        elif mode == '3end as center':
+            ref_point = get_3end()
+            s, e = as_center(ref_point, half_width)
+        elif mode == '5end as 5end':
+            ref_point = get_5end()
+            s, e = as_5end(ref_point, width)
+        elif mode == '3end as 3end':
+            ref_point = get_3end()
+            s, e = as_3end(ref_point, width)
+        if inplace:
+            self.start = s
+            self.end = e
+        else:
+            return GenCoor(chrom=self.chrom, start=s, end=e, name=self.name,
+                           score=self.score, strand=self.strand, data=self.data)
 
 class GenCoorSet:
     """A Python class for handling a set of genomic coordinates.
@@ -337,6 +404,8 @@ class GenCoorSet:
             GenCoorFileIO.Bed.write_from_gcs(self, filename)
         elif filetype == "BED12":
             GenCoorFileIO.Bed12.write_from_gcs(self, filename)
+    def relocate(self,str mode, int width, inplace=False):
+        """Relocate the"""
 
     def extend(self, str mode, int length, inplace=False):
         """Extend the genomic coordinates by certain length according to the given mode.
