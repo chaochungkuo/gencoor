@@ -139,7 +139,7 @@ setuptools.setup(
     classifiers=["Programming Language :: Python :: 3",
                  "License :: OSI Approved :: MIT License",
                  "Operating System :: OS Independent"],
-    ext_modules=cythonize("gencoor/coordinates.pyx",
+    ext_modules=cythonize("gencoor/*.pyx",
                           compiler_directives={'language_level': "3"},
                           annotate=True),
     cmdclass={'install': CustomInstallCommand}

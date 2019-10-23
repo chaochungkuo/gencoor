@@ -6,7 +6,7 @@ sys.path.insert(0, myPath + '/../')
 from gencoor.exceptions import ChromosomeNotStrError, PositionNotIntegerError, NameNotStrError,\
                                StrandNotStrError, CoordinateFlipError
 from gencoor.coordinates import GenCoor, GenCoorSet
-# from gencoor.coordinates_cy import GenCoor, GenCoorSet
+
 import pytest
 
 # @pytest.fixture(scope="module")
@@ -50,61 +50,61 @@ def test_GenCoor_capital_name():
 def test_GenCoor_overlap1():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr2", start=1, end=100, name="test", strand=".")
-    assert g1.overlap(region=g2) is False
+    assert g1.overlap(region=g2) == False
 
 def test_GenCoor_overlap_pairing1():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr2", 1, 100, ".")
-    assert res is False
+    assert res == False
 
 def test_GenCoor_overlap():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=101, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) is False
+    assert g1.overlap(region=g2) == False
 
 def test_GenCoor_overlap_pairing2():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 101, 110, ".")
-    assert res is False
+    assert res == False
 
 def test_GenCoor_overlap3():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=100, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) is False
+    assert g1.overlap(region=g2) == False
 
 def test_GenCoor_overlap_pairing3():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 100, 110, ".")
-    assert res is False
+    assert res == False
 
 def test_GenCoor_overlap4():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) is True
+    assert g1.overlap(region=g2) == True
 
 def test_GenCoor_overlap_pairing4():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 99, 110, ".")
-    assert res is True
+    assert res == True
 
 def test_GenCoor_overlap5():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand="+")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand="-")
-    assert g1.overlap(region=g2, strand_specific=True) is False
+    assert g1.overlap(region=g2, strand_specific=True) == False
 
 
 def test_GenCoor_overlap6():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand="-")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand="-")
-    assert g1.overlap(region=g2, strand_specific=True) is True
+    assert g1.overlap(region=g2, strand_specific=True) == True
 
 
 def test_GenCoor_overlap7():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
-    assert g1.overlap(region=g2) is True
+    assert g1.overlap(region=g2) == True
 
 
 def test_GenCoor_overlap8():
     g1 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
-    assert g1.overlap(region=g2) is True
+    assert g1.overlap(region=g2) == True
 
 
 def test_GenCoor_distance1():
@@ -134,7 +134,7 @@ def test_GenCoor_distance4():
 def test_GenCoor_distance5():
     g1 = GenCoor(chrom="chr1", start=10, end=65, name="test", strand=".")
     g2 = GenCoor(chrom="chr2", start=60, end=70, name="test", strand=".")
-    assert g2.distance(region=g1, sign=True) is None
+    assert g2.distance(region=g1, sign=True) == None
 
 def test_GenCoor_extract_bed12():
     g1 = GenCoor(chrom="chr22", start=1000, end=5000, name="cloneA", strand="+",
@@ -153,93 +153,92 @@ def test_GenCoor_extract_bed12():
 def test_GenCoor_relocate1():
     g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand=".")
     r = g1.relocate(mode='center as center', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='5end as center', inplace=False)
-    assert r.start is 5
-    assert r.end is 15
+    assert r.start == 5
+    assert r.end == 15
     r = g1.relocate(mode='3end as center', inplace=False)
-    assert r.start is 15
-    assert r.end is 25
+    assert r.start == 15
+    assert r.end == 25
     r = g1.relocate(mode='5end as 5end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='3end as 3end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
 def test_GenCoor_relocate2():
     g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+")
     r = g1.relocate(mode='center as center', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='5end as center', inplace=False)
-    assert r.start is 5
-    assert r.end is 15
+    assert r.start == 5
+    assert r.end == 15
     r = g1.relocate(mode='3end as center', inplace=False)
-    assert r.start is 15
-    assert r.end is 25
+    assert r.start == 15
+    assert r.end == 25
     r = g1.relocate(mode='5end as 5end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='3end as 3end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
 def test_GenCoor_relocate3():
     g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="-")
     r = g1.relocate(mode='center as center', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='5end as center', inplace=False)
-    assert r.start is 15
-    assert r.end is 25
+    assert r.start == 15
+    assert r.end == 25
     r = g1.relocate(mode='3end as center', inplace=False)
-    assert r.start is 5
-    assert r.end is 15
+    assert r.start == 5
+    assert r.end == 15
     r = g1.relocate(mode='5end as 5end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
     r = g1.relocate(mode='3end as 3end', inplace=False)
-    assert r.start is 10
-    assert r.end is 20
+    assert r.start == 10
+    assert r.end == 20
 def test_GenCoor_relocate4():
     g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="+")
     r = g1.relocate(mode='center as center', width=2, inplace=False)
-    assert r.start is 14
-    assert r.end is 16
+    assert r.start == 14
+    assert r.end == 16
     r = g1.relocate(mode='5end as center', width=2, inplace=False)
-    assert r.start is 9
-    assert r.end is 11
+    assert r.start == 9
+    assert r.end == 11
     r = g1.relocate(mode='3end as center', width=2, inplace=False)
-    assert r.start is 19
-    assert r.end is 21
+    assert r.start == 19
+    assert r.end == 21
     r = g1.relocate(mode='5end as 5end', width=2, inplace=False)
-    assert r.start is 10
-    assert r.end is 12
+    assert r.start == 10
+    assert r.end == 12
     r = g1.relocate(mode='3end as 3end', width=2, inplace=False)
-    assert r.start is 18
-    assert r.end is 20
+    assert r.start == 18
+    assert r.end == 20
 def test_GenCoor_relocate5():
     g1 = GenCoor(chrom="chr1", start=10, end=20, name="test", strand="-")
     r = g1.relocate(mode='center as center', width=2, inplace=False)
-    assert r.start is 14
-    assert r.end is 16
+    assert r.start == 14
+    assert r.end == 16
     r = g1.relocate(mode='5end as center', width=2, inplace=False)
-    assert r.start is 19
-    assert r.end is 21
+    assert r.start == 19
+    assert r.end == 21
     r = g1.relocate(mode='3end as center', width=2, inplace=False)
-    assert r.start is 9
-    assert r.end is 11
+    assert r.start == 9
+    assert r.end == 11
     r = g1.relocate(mode='5end as 5end', width=2, inplace=False)
-    assert r.start is 18
-    assert r.end is 20
+    assert r.start == 18
+    assert r.end == 20
     r = g1.relocate(mode='3end as 3end', width=2, inplace=False)
-    assert r.start is 10
-    assert r.end is 12
+    assert r.start == 10
+    assert r.end == 12
+
 #################################################################
 #### Tests on GenCoorSet
-
-
-
+#################################################################
 
 def test_GenCoorSet_add():
     genset = GenCoorSet(name="Test_set")
@@ -631,27 +630,27 @@ def test_standard_chromosome1():
     genset1.add(GenCoor(chrom="chr2", start=20, end=40, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr3_random", start=70, end=80, name="test", strand="."))
     genset1.standard_chromosome()
-    assert len(genset1) is 2
+    assert len(genset1) == 2
 def test_standard_chromosome2():
     genset1 = GenCoorSet(name="Test_set")
     genset1.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr2", start=20, end=40, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr3_random", start=70, end=80, name="test", strand="."))
     res = genset1.standard_chromosome(inplace=False)
-    assert len(genset1) is 3
-    assert len(res) is 2
+    assert len(genset1) == 3
+    assert len(res) == 2
 def test_total_coverage1():
     genset1 = GenCoorSet(name="Test_set")
     genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
     cov = genset1.total_coverage()
-    assert cov is 85
+    assert cov == 85
 def test_total_coverage2():
     genset1 = GenCoorSet(name="Test_set")
     genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
     cov = genset1.total_coverage()
-    assert cov is 4
+    assert cov == 4
 def test_rm_duplicates1():
     genset1 = GenCoorSet(name="Test_set")
     genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
@@ -659,7 +658,7 @@ def test_rm_duplicates1():
     genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
     res = genset1.rm_duplicates(inplace=False)
-    assert len(res) is 3
+    assert len(res) == 3
 def test_rm_duplicates2():
     genset1 = GenCoorSet(name="Test_set")
     genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
@@ -667,5 +666,4 @@ def test_rm_duplicates2():
     genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
     genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="-"))
     res = genset1.rm_duplicates(inplace=False)
-    assert len(res) is 4
-
+    assert len(res) == 4

@@ -4,7 +4,7 @@ import numpy
 from tqdm import tqdm
 
 class Annotation:
-    def __init__(self, name, genome):
+    def __init__(self, str name, str genome):
         self.name = name
         self.header = ["chrom", "start", "end", "symbol", "score", "strand",
                        "annotation source", "feature type", "gene_type",
@@ -19,8 +19,10 @@ class Annotation:
         else:
             self.load(gtf_file_path=genome) # Add error when no such file
 
-
-    def load(self, gtf_file_path):
+    def __len__(self):
+        return numpy.size(self.table,0)
+        
+    def load(self, str gtf_file_path):
         """
         0 chromosome name	chr{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,X,Y,M} or GRC accession a
         1 genomic start location	integer-value (1-based)
@@ -41,11 +43,29 @@ class Annotation:
         16 exon_id f	all except gene/transcript/Selenocysteine	ENSEXXXXXXXXXXX.X b _Xg
 
         """
-        def check_label(label, l):
+        cdef str line
+        cdef int num_lines
+        cdef list l
+        cdef str symbol
+        cdef str ensembl
+        cdef str gene_type
+        cdef str hgnc_id
+        cdef str havana_gene
+        cdef str transcript_name
+        cdef str transcript_id
+        cdef str transcript_type
+        cdef str havana_transcript
+        cdef str exon_number
+        cdef str exon_id
+        cdef str protein_id
+        cdef list new_row
+
+
+        def check_label(str label, list l):
             if label in l:
                 return l[l.index(label) + 1]
             else:
-                return None
+                return ""
         print("Loading annotation file: "+ gtf_file_path)
         num_lines = sum(1 for line in open(gtf_file_path, 'r'))
         with open(gtf_file_path) as f:
@@ -74,7 +94,8 @@ class Annotation:
                     self.table.append(new_row)
         self.table = numpy.array(self.table)
 
-    def output_regions(self, table, name, gene_name="symbol"):
+    def output_regions(self, table, str name, str gene_name="symbol"):
+        cdef int gn_idx
         res = GenCoorSet(name)
         if gene_name == "symbol":
             gn_idx = 3
@@ -84,7 +105,7 @@ class Annotation:
             res.add(GenCoor(chrom=r[0], start=int(r[1]), end=int(r[2]), name=r[gn_idx], strand=r[5]))
         return res
 
-    def filter(self, query, name):
+    def filter(self, dict query, str name):
         """
 
         :param query:
