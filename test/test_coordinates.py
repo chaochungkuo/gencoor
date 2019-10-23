@@ -50,61 +50,61 @@ def test_GenCoor_capital_name():
 def test_GenCoor_overlap1():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr2", start=1, end=100, name="test", strand=".")
-    assert g1.overlap(region=g2) == False
+    assert g1.overlap(region=g2) is False
 
 def test_GenCoor_overlap_pairing1():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr2", 1, 100, ".")
-    assert res == False
+    assert res is False
 
 def test_GenCoor_overlap():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=101, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) == False
+    assert g1.overlap(region=g2) is False
 
 def test_GenCoor_overlap_pairing2():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 101, 110, ".")
-    assert res == False
+    assert res is False
 
 def test_GenCoor_overlap3():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=100, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) == False
+    assert g1.overlap(region=g2) is False
 
 def test_GenCoor_overlap_pairing3():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 100, 110, ".")
-    assert res == False
+    assert res is False
 
 def test_GenCoor_overlap4():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand=".")
-    assert g1.overlap(region=g2) == True
+    assert g1.overlap(region=g2) is True
 
 def test_GenCoor_overlap_pairing4():
     res = GenCoor.overlap_pairing("chr1", 1, 100, ".", "chr1", 99, 110, ".")
-    assert res == True
+    assert res is True
 
 def test_GenCoor_overlap5():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand="+")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand="-")
-    assert g1.overlap(region=g2, strand_specific=True) == False
+    assert g1.overlap(region=g2, strand_specific=True) is False
 
 
 def test_GenCoor_overlap6():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand="-")
     g2 = GenCoor(chrom="chr1", start=99, end=110, name="test", strand="-")
-    assert g1.overlap(region=g2, strand_specific=True) == True
+    assert g1.overlap(region=g2, strand_specific=True) is True
 
 
 def test_GenCoor_overlap7():
     g1 = GenCoor(chrom="chr1", start=1, end=100, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
-    assert g1.overlap(region=g2) == True
+    assert g1.overlap(region=g2) is True
 
 
 def test_GenCoor_overlap8():
     g1 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
     g2 = GenCoor(chrom="chr1", start=50, end=50, name="test", strand=".")
-    assert g1.overlap(region=g2) == True
+    assert g1.overlap(region=g2) is True
 
 
 def test_GenCoor_distance1():
