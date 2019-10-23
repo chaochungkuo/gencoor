@@ -1,9 +1,6 @@
-import sys
 from gencoor.util import GenomeConfig
 from gencoor.coordinates import GenCoor, GenCoorSet
 import numpy
-from numba.typed import List
-from numba import njit
 from tqdm import tqdm
 
 class Annotation:
@@ -21,8 +18,6 @@ class Annotation:
             self.load(gtf_file_path=GConfig.get_gtf())
         else:
             self.load(gtf_file_path=genome) # Add error when no such file
-
-
 
 
     def load(self, gtf_file_path):
@@ -101,7 +96,6 @@ class Annotation:
     def boolean_index(self, query):
         filter_critiria = []
         for key, values in query.items():
-            print([key, values])
             if values is not list:
                 values = [values]
             for v in values:
@@ -117,17 +111,8 @@ class Annotation:
         q = {"feature type": "transcript"}
         return self.filter(q, self.name+"_transcript")
 
-    def get_promoters(self, length=1000):
-        transcripts = self.get_transcripts()
-
-
-
-if __name__ == '__main__':
-    ann = Annotation(name="test", genome="hg38")
-    query = {"feature type": "gene",
-             "gene_type": "lncRNA"
-             }
-    coordintes = ann.filter(query, "lncRNA_gene")
-    print(len(coordintes))
-
-
+    def get_all_promoters(self, length=1000):
+        promoters = self.get_transcripts()
+        promoters.relocate(mode='5end as 3end', width=length, inplace=True)
+        promoters.name = self.name+"_promoters"
+        return promoters

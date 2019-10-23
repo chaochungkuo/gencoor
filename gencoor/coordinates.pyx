@@ -1,4 +1,5 @@
-from .exceptions import OverlapTypeError
+from gencoor.exceptions import OverlapTypeError
+from gencoor.util import GenomeConfig
 
 class GenCoorFileIO:
     class Bed:
@@ -275,6 +276,8 @@ class GenCoor:
         '3end as center'
         '5end as 5end'
         '3end as 3end'
+        '5end as 3end'
+        '3end as 5end'
 
         width : None or integer
         Define the width of the new region. If not defined, the original width is used.
@@ -325,6 +328,12 @@ class GenCoor:
         elif mode == '3end as 3end':
             ref_point = get_3end()
             s, e = as_3end(ref_point, width)
+        elif mode == '5end as 3end':
+            ref_point = get_5end()
+            s, e = as_3end(ref_point, width)
+        elif mode == '3end as 5end':
+            ref_point = get_3end()
+            s, e = as_5end(ref_point, width)
         if inplace:
             self.start = s
             self.end = e
@@ -383,6 +392,7 @@ class GenCoorSet:
         res = sorted(res, key=lambda x: x.chrom)
         if inplace:
             self.list = res
+            self.sorted = True
         else:
             res_gencoorset = GenCoorSet(name=self.name)
             res_gencoorset.sorted = True
@@ -404,8 +414,6 @@ class GenCoorSet:
             GenCoorFileIO.Bed.write_from_gcs(self, filename)
         elif filetype == "BED12":
             GenCoorFileIO.Bed12.write_from_gcs(self, filename)
-    def relocate(self,str mode, int width, inplace=False):
-        """Relocate the"""
 
     def extend(self, str mode, int length, inplace=False):
         """Extend the genomic coordinates by certain length according to the given mode.
@@ -458,6 +466,7 @@ class GenCoorSet:
 
         if inplace:
             self.list = new_gcs.list
+            self.sorted = False
         else:
             return new_gcs
 
@@ -591,6 +600,7 @@ class GenCoorSet:
                 return z
             else:
                 self.list = z
+                self.sorted = True
 
     def intersect(self, gcs, mode="overlap", strand_specific=False):
         """Get intersection regions between two GenCoorSets
@@ -719,10 +729,55 @@ class GenCoorSet:
                 raise OverlapTypeError
             return z
 
-    # def standard_chromosome(self, organism):
-    #
-    # def total_coverage(self):
-    #
-    # def rm_duplicates(self):
-    #
+    def relocate(self, str mode, int width=-1, inplace=True):
+        """Relocate the regions with defined mode and defined length
+
+        Parameters
+        ----------
+        mode : string
+        'center as center'
+        '5end as center'
+        '3end as center'
+        '5end as 5end'
+        '3end as 3end'
+        '5end as 3end'
+        '3end as 5end'
+
+        width : None or integer
+        Define the width of the new region. If not defined, the original width is used.
+        """
+        if inplace:
+            for r in self:
+                r.relocate(mode, width, inplace)
+            self.sorted = False
+        else:
+            res = GenCoorSet(name=self.name)
+            for r in self:
+                res.add(r.relocate(mode, width, inplace))
+
+    def standard_chromosome(self, inplace=True):
+        """Filter out the non-standard Chromosomes with '_' in their names
+        """
+        if inplace:
+            self.list[:] = [r for r in self.list if "_" not in r.chrom]
+        else:
+            res = GenCoorSet(name=self.name)
+            res.list = [r for r in self.list if "_" not in r.chrom]
+            return res
+
+    def total_coverage(self):
+        """Return the total coverage (bp) of all regions
+        """
+        return sum([len(r) for r in self])
+
+    def rm_duplicates(self, inplace=True):
+        """Remove the duplicates which share exactly the same start position, end position and strandness, regardless the name or data.
+        """
+        if inplace:
+            self.list[:] = list(set(self.list))
+        else:
+            res = GenCoorSet(name=self.name)
+            res.list = list(set(self.list))
+            return res
+
     # def

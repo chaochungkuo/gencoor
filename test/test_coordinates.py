@@ -625,3 +625,47 @@ def test_intersect_15():
     res = genset1.intersect(genset2, mode="complete_included")
     assert len(res) == 1
 
+def test_standard_chromosome1():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=20, end=40, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr3_random", start=70, end=80, name="test", strand="."))
+    genset1.standard_chromosome()
+    assert len(genset1) is 2
+def test_standard_chromosome2():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=50, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=20, end=40, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr3_random", start=70, end=80, name="test", strand="."))
+    res = genset1.standard_chromosome(inplace=False)
+    assert len(genset1) is 3
+    assert len(res) is 2
+def test_total_coverage1():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
+    cov = genset1.total_coverage()
+    assert cov is 85
+def test_total_coverage2():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    cov = genset1.total_coverage()
+    assert cov is 4
+def test_rm_duplicates1():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
+    res = genset1.rm_duplicates(inplace=False)
+    assert len(res) is 3
+def test_rm_duplicates2():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="-"))
+    res = genset1.rm_duplicates(inplace=False)
+    assert len(res) is 4
+
