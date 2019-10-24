@@ -6,7 +6,6 @@ sys.path.insert(0, myPath + '/../')
 from gencoor.exceptions import ChromosomeNotStrError, PositionNotIntegerError, NameNotStrError,\
                                StrandNotStrError, CoordinateFlipError
 from gencoor.coordinates import GenCoor, GenCoorSet
-
 import pytest
 
 # @pytest.fixture(scope="module")
@@ -667,3 +666,5 @@ def test_rm_duplicates2():
     genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="-"))
     res = genset1.rm_duplicates(inplace=False)
     assert len(res) == 4
+
+# os.system("bash <(curl -s https://codecov.io/bash) -t f34d6638-3e35-4782-98ac-8f355151c2fe")

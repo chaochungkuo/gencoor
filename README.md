@@ -18,3 +18,8 @@ Installation
 
 Examples:
 ====
+** Load a BED file
+
+** Get all protein coding genes from human genome
+
+** 
