@@ -13,12 +13,12 @@ class SignalProfile:
         self.step = step
         self.cov = {}
 
-    def bam_read_pair_generator(self, bam, total, region_string=None):
+    def bam_read_pair_generator(self, bam, chrom, start, end):
         """Generate read pairs in a BAM file or within a region string. Reads are added to read_dict until a pair is found.
         """
-        print("Iterating all the paired reads...")
         read_dict = defaultdict(lambda: [None, None])
-        fetch_reads = bam.fetch(region=region_string)
+        fetch_reads = bam.fetch(chrom, start, end)
+        total = sum(1 for _ in fetch_reads)
         pbar = tqdm(total=total)
         for read in fetch_reads:
             if not read.is_proper_pair or read.is_secondary or read.is_supplementary:
@@ -56,47 +56,52 @@ class SignalProfile:
             else:
                 l = read1.reference_start + read1.infer_query_length() - read2.reference_start
             length_list.append(l)
-        print(" OK")
         return sum(length_list)/len(length_list)
 
-    def bam_get_paired_reads_positions(self, filename):
+    def bam_count_paired_reads(self, bam, chrom, start, end):
         """Return the position of left end and right end of the fragment (including read1 and read2). (Only used for paired-end bamfiles)"""
-        print("Iterating the paired reads position...", end="", flush=True)
+        c = 0
+        for read1, read2 in self.bam_read_pair_generator(bam, chrom, start, end):
+            c += 1
+        return c
+
+    def bam_get_paired_reads_positions(self, bam, chrom, start, end):
+        """Return the position of left end and right end of the fragment (including read1 and read2). (Only used for paired-end bamfiles)"""
         pos_left = []
         pos_right = []
-        total_reads = self.bam_total_reads(filename)
-        bam = pysam.AlignmentFile(filename, "rb")
-        for read1, read2 in self.bam_read_pair_generator(bam, total=total_reads):
+        for read1, read2 in self.bam_read_pair_generator(bam, chrom, start, end):
             if read2.is_reverse:
                 pos_left.append(read1.reference_start)
                 pos_right.append(read2.reference_start + read2.infer_query_length())
             else:
-                #XXXXXXXXXXXXXXXXXXXXXXx
-                pos_left.append(read1.reference_start)
-                pos_right.append(read2.reference_start + read2.infer_query_length())
-                l = read1.reference_start + read1.infer_query_length() - read2.reference_start
-            length_list.append(l)
-        print(" OK")
-        return sum(length_list) / len(length_list)
+                pos_left.append(read2.reference_start )
+                pos_right.append(read1.reference_start + read1.infer_query_length())
+        return pos_left, pos_right
 
     def load_bam(self, filename, label, extension_size=-1):
         """Load a BAM and calcualte the coverage on the defined genomic coordinates. If extenstion is not defined, the length of the paired reads will be calculated. extension is only used for single-end sequencing."""
         self.cov[label] = {}
         # Detect fragment size
         # average_frag_size = self.bam_detect_fragment_size(filename)
-        buffer_extesion = 500
-        bamfile = pysam.AlignmentFile(filename, "rb")
+        buffer_extesion = 300
+        bam = pysam.AlignmentFile(filename, "rb")
         for r in self.regions:
             win1 = r.start
             win2 = r.start + self.bin
             self.cov[label][r] = []
             while win2 < r.end:
-                reads_in_win = bamfile.fetch(r.chrom, win1-buffer_extesion, win2+buffer_extesion)
-                for r in reads_in_win:
-                    if not r.is_proper_pair or r.is_secondary or r.is_supplementary:
-                        continue
-                read_start = [r.reference_start for r in reads_in_win if r]
-                c = sum([1 for read in ])
+                c = self.bam_count_paired_reads(bam, r.chrom, win1-buffer_extesion, win2+buffer_extesion)
+                #
+                # pos_left, pos_right = self.bam_get_paired_reads_positions(bam, r.chrom,
+                #                                                           win1-buffer_extesion,
+                #                                                           win2+buffer_extesion)
+                # c = 0
+                # for i in range(len(pos_left)):
+                #     if pos_left[i] < win1 < pos_right or win1 < pos_left < pos_right < win2 or pos_left[i] < win2 < pos_right
+                #
+                #         c += 1
+                #
+                # c = sum([1 for read in ])
                 self.cov[label][r].append(c)
                 win1 += self.step
                 win2 += self.step
