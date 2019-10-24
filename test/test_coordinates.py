@@ -256,8 +256,11 @@ def test_GenCoorSet_len():
 
 def test_GenCoorSet_load():
     genset = GenCoorSet(name="Test_set")
-    genset.load(filename="/Users/jovesus/rgtdata/hg38/genes_Gencode_hg38.bed", filetype="BED")
-    genset.save(filename="/Users/jovesus/projects/gencoor/test/test_res_bed.bed", filetype="BED")
+    bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
+    bedfile2 = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38_test.bed")
+    genset.load(filename=bedfile, filetype="BED")
+    genset.save(filename=bedfile2, filetype="BED")
+    os.remove(bedfile2)
     ### test BED12
     # genset.load(filename="/Users/jovesus/projects/gencoor/test/test_bed12.bed", filetype="BED12")
     # genset.save(filename="/Users/jovesus/projects/gencoor/test/test_res_bed12.bed", filetype="BED12")
@@ -293,7 +296,8 @@ def test_extend():
     assert ngcs.list[1].end == 55
 def test_split_by_strands():
     genset = GenCoorSet(name="Test_set")
-    genset.load(filename="/Users/jovesus/rgtdata/hg38/genes_Gencode_hg38.bed", filetype="BED")
+    bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
+    genset.load(filename=bedfile, filetype="BED")
     res = genset.split_by_strands()
     assert set([g.strand for g in res["+"]]) == set(["+"])
     assert set([g.strand for g in res["-"]]) == set(["-"])

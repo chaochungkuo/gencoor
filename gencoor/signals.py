@@ -37,11 +37,11 @@ class SignalProfile:
                 win1 += self.step
                 win2 += self.step
 
-if __name__ == '__main__':
-    genset1 = GenCoorSet(name="Test_set")
-    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
-    # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
-    # genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
-    # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
-    signal_profile = SignalProfile(regions=genset1)
-    signal_profile.load_bam(filename=)
+# if __name__ == '__main__':
+#     genset1 = GenCoorSet(name="Test_set")
+#     genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+#     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
+#     # genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
+#     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
+#     signal_profile = SignalProfile(regions=genset1)
+#     signal_profile.load_bam(filename=)
