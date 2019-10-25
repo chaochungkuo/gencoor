@@ -334,12 +334,23 @@ class GenCoor:
         elif mode == '3end as 5end':
             ref_point = get_3end()
             s, e = as_5end(ref_point, width)
+        if s < 0:
+            s = 0
+        if e < 0:
+            e = 0
         if inplace:
             self.start = s
             self.end = e
         else:
             return GenCoor(chrom=self.chrom, start=s, end=e, name=self.name,
                            score=self.score, strand=self.strand, data=self.data)
+
+    def check_chrom_boundary(self, chrom_size):
+        """Check whether the region is beyond the chromosome boundary. If yes, fix it."""
+        if self.start < 0:
+          self.start = 0
+        if self.end > chrom_size[self.chrom]:
+          self.end = chrom_size[self.chrom]
 
 class GenCoorSet:
     """A Python class for handling a set of genomic coordinates.
@@ -779,5 +790,6 @@ class GenCoorSet:
             res = GenCoorSet(name=self.name)
             res.list = list(set(self.list))
             return res
+
 
     # def
