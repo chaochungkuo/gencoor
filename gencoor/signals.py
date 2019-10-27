@@ -133,7 +133,7 @@ class SignalProfile:
             for r in self.regions:
                 self.cov[k][r] = [j * float(v) for j in self.cov[k][r]]
 
-    def 
+    # def
 if __name__ == '__main__':
     # genset1 = GenCoorSet(name="Test_set")
     # genset1.add(GenCoor(chrom="chr1", start=100000, end=150000, name="test", strand="."))
