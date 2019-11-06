@@ -127,6 +127,33 @@ class SignalProfile:
             pbar.update(1)
         pbar.close()
 
+    def load_bedgraph(self, filename, label):
+        print("Loading BedGraph file " + filename)
+        self.file_path[label] = filename
+        self.cov[label] = {}
+        bg = GenCoorSet(filename=filename, name=label)
+        bg.load(filetype="BedGraph")
+        pbar = tqdm(total=len(self.regions))
+        for r in self.regions:
+            try:
+                win1 = r.start
+                win2 = r.start + self.bin
+                self.cov[label][r] = []
+                while win2 < r.end:
+                    over_r = bg.overlap_a_region(GenCoor(chrom=r.chrom, start=win1, end=win2))
+                    if over_r:
+                        c = over_r.score
+                    else:
+                        c = 0
+                    self.cov[label][r].append(c)
+                    win1 += self.step
+                    win2 += self.step
+
+            except:
+                pass
+            pbar.update(1)
+        pbar.close()
+
     def normalize_by_scaling_factors(self, factors):
         """Rescale the coverage by the given scaling facotrs. The input factors is a dictionary with label as the key and scaling factor as the value."""
         for k, v in factors.items():
