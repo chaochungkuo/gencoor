@@ -6,10 +6,12 @@ from collections import defaultdict
 from tqdm import tqdm
 from gencoor.coordinates import GenCoorSet, GenCoor
 import pprint
+import sys
 
 class SignalProfile:
     def __init__(self, regions, bin=200, step=100):
         self.regions = regions
+        self.regions.sort()
         self.bin = bin
         self.step = step
         self.cov = {}
@@ -131,27 +133,52 @@ class SignalProfile:
         print("Loading BedGraph file " + filename)
         self.file_path[label] = filename
         self.cov[label] = {}
-        bg = GenCoorSet(filename=filename, name=label)
-        bg.load(filetype="BedGraph")
+        bg = GenCoorSet(name=label)
+        bg.load(filename=filename, filetype="BedGraph")
+        bg.sort()
+        chroms, starts, ends, names, scores, strands, datas = bg.to_lists()
+        i = 0
+        j = 0
+        loop_continue = True
         pbar = tqdm(total=len(self.regions))
-        for r in self.regions:
-            try:
+
+        while loop_continue:
+            r = self.regions[j]
+            if GenCoor.overlap_pairing(r.chrom, r.start,
+                                       r.end, r.strand,
+                                       chroms[i], starts[i], ends[i], strands[i]):
                 win1 = r.start
                 win2 = r.start + self.bin
-                self.cov[label][r] = []
+                init_cov = False
+                ind_step = 0
+                if r not in self.cov[label].keys():
+                    init_cov = True
+                    self.cov[label][r] = []
                 while win2 < r.end:
-                    over_r = bg.overlap_a_region(GenCoor(chrom=r.chrom, start=win1, end=win2))
-                    if over_r:
-                        c = over_r.score
+                    if GenCoor.overlap_pairing(r.chrom, win1, win2, r.strand,
+                                               chroms[i], starts[i], ends[i], strands[i]):
+                        c = float(scores[i])
                     else:
-                        c = 0
-                    self.cov[label][r].append(c)
+                        c = float(0)
+                    if init_cov:
+                        self.cov[label][r].append(c)
+                    else:
+                        self.cov[label][r][ind_step] += c
                     win1 += self.step
                     win2 += self.step
+                    ind_step += 1
+                i += 1
+            elif r > bg[i]:
+                i += 1
+            elif r < bg[i]:
+                # self.cov[label][r] = [0] * (len(r)//self.step)
+                j += 1
+                pbar.update(1)
+            if i == len(bg):
+                loop_continue = False
+            if j == len(self.regions):
+                loop_continue = False
 
-            except:
-                pass
-            pbar.update(1)
         pbar.close()
 
     def normalize_by_scaling_factors(self, factors):
@@ -169,21 +196,33 @@ if __name__ == '__main__':
     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
     # genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
+    # genset1 = GenCoorSet(name="Test_set")
+    # bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
+    # genset1.load(filename=bedfile, filetype="BED")
+    # genset1.relocate(mode="5end as 3end", width=2000)
+    # signal_profile = SignalProfile(regions=genset1)
+    # signal_profile.load_bam(filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/1_Alignment/bam_filtered/Y6.bam",
+    #                         label="bam")
+    # signal_profile.load_bigwig(
+    #     filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/2_Peak_Calling/THOR_res_masked/CTCF_ChIPSeq-s1-rep1.bw",
+    #     label="bw")
+
     genset1 = GenCoorSet(name="Test_set")
-    bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
-    genset1.load(filename=bedfile, filetype="BED")
-    genset1.relocate(mode="5end as 3end", width=1000)
-    signal_profile = SignalProfile(regions=genset1[1000:1002])
-    signal_profile.load_bam(filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/1_Alignment/bam_filtered/Y6.bam",
-                            label="bam")
-    signal_profile.load_bigwig(
-        filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/2_Peak_Calling/THOR_res_masked/CTCF_ChIPSeq-s1-rep1.bw",
-        label="bw")
-    sc = {"bam": 10, "bw": 0.5}
-    signal_profile.normalize_by_scaling_factors(factors=sc)
+    genset1.load(filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson_hyper250.bed", filetype="BED")
+    genset1.relocate(mode="center as center", width=2000)
+    signal_profile = SignalProfile(regions=genset1)
+    signal_profile.load_bedgraph(
+        filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson.bedgraph",
+        label="bedgraph")
+    # sc = {"bam": 10, "bw": 0.5}
+    # signal_profile.normalize_by_scaling_factors(factors=sc)
 
     pp = pprint.PrettyPrinter(indent=4)
 
-    pp.pprint(signal_profile.cov["bam"])
-    pp.pprint(signal_profile.cov["bw"])
-    # print(signal_profile.cov["test_bw"].values()[50:60])
+    # pp.pprint(signal_profile.cov["bam"])
+    # pp.pprint(signal_profile.cov["bw"])
+    # pp.pprint(signal_profile.cov["bedgraph"])
+    # print(signal_profile.cov["bedgraph"])
+    for k, v in signal_profile.cov["bedgraph"].items():
+        if sum(v) != 0:
+            print(v)
