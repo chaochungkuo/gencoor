@@ -91,10 +91,10 @@ class SignalProfile:
             try:
                 win1 = r.start
                 win2 = r.start + self.bin
-                self.cov[label][r] = []
+                self.cov[label][str(r)] = []
                 while win2 < r.end:
                     c = self.bam_count_paired_reads(bam, r.chrom, win1-self.step, win2+self.step)
-                    self.cov[label][r].append(c)
+                    self.cov[label][str(r)].append(c)
                     win1 += self.step
                     win2 += self.step
             except:
@@ -112,13 +112,13 @@ class SignalProfile:
             try:
                 win1 = r.start
                 win2 = r.start + self.bin
-                self.cov[label][r] = []
+                self.cov[label][str(r)] = []
                 while win2 < r.end:
                     c = bw.stats(r.chrom, win1, win2, type="mean")[0]
                     # print(c)
                     if not c:
                         c = 0
-                    self.cov[label][r].append(c)
+                    self.cov[label][str(r)].append(c)
                     win1 += self.step
                     win2 += self.step
 
@@ -131,7 +131,9 @@ class SignalProfile:
         """Rescale the coverage by the given scaling facotrs. The input factors is a dictionary with label as the key and scaling factor as the value."""
         for k, v in factors.items():
             for r in self.regions:
-                self.cov[k][r] = [j * float(v) for j in self.cov[k][r]]
+                self.cov[k][str(r)] = [j * float(v) for j in self.cov[k][str(r)]]
+
+
 
     # def
 if __name__ == '__main__':

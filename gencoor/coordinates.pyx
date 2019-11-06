@@ -27,7 +27,7 @@ class GenCoorFileIO:
         def write_from_gcs(gcs, str filename, str mode="w"):
             with open(filename, mode) as f:
                 for gc in gcs:
-                    print(gc, file=f)
+                    print(gc.str_split(), file=f)
 
     class Bed12:
         """
@@ -125,13 +125,25 @@ class GenCoor:
     def __str__(self):
         """Return a readable string."""
         # return f"{str(self.start)}-{str(self.end)}"
+        # if not self.data:
+        #   res = " ".join([self.chrom, str(self.start), str(self.end),
+        #                   self.name, str(self.score), self.strand])
+        # else:
+        #   res = " ".join([self.chrom, str(self.start), str(self.end),
+        #                   self.name, str(self.score), self.strand, self.data])
+        # return res
+        return f"{self.chrom}:{str(self.start)}-{str(self.end)} {self.strand}"
+
+    def str_tab(self):
+        """Return a readable string."""
+        # return f"{str(self.start)}-{str(self.end)}"
         if not self.data:
-            return("\t".join([self.chrom, str(self.start), str(self.end),
-                              self.name, str(self.score), self.strand]))
+          res = "/t".join([self.chrom, str(self.start), str(self.end),
+                          self.name, str(self.score), self.strand])
         else:
-            return ("\t".join([self.chrom, str(self.start), str(self.end),
-                               self.name, str(self.score), self.strand,
-                               self.data]))
+          res = "/t".join([self.chrom, str(self.start), str(self.end),
+                          self.name, str(self.score), self.strand, self.data])
+        return res
 
     def __repr__(self):
         """Return all information as a string."""
