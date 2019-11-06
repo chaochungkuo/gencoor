@@ -53,6 +53,27 @@ class GenCoorFileIO:
             with open(filename, mode) as f:
                 for gc in gcs:
                     print(gc, file=f)
+    class BedGraph:
+        """
+        Load BedGraph File
+        """
+
+        @staticmethod
+        def read_to_gcs(gcs, str filename):
+            cdef str line
+            cdef list l
+            with open(filename, "r") as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    if not line.startswith("#"):
+                        l = line.split()
+                        gcs.add(GenCoor(chrom=l[0], start=int(l[1]), end=int(l[2]), name="", score=l[3]))
+
+        @staticmethod
+        def write_from_gcs(gcs, str filename, str mode="w"):
+            with open(filename, mode) as f:
+                for gc in gcs:
+                    print(gc, file=f)
 class GenCoor:
     """A Python class for handling a genomic coordinate.
 
@@ -417,6 +438,8 @@ class GenCoorSet:
             self = GenCoorFileIO.Bed.read_to_gcs(self, filename)
         elif filetype == "BED12":
             self = GenCoorFileIO.Bed12.read_to_gcs(self, filename)
+        elif filetype == "BedGraph":
+            self = GenCoorFileIO.BedGraph.read_to_gcs(self, filename)
 
     def save(self, str filename, filetype="BED"):
         """Save the genomic coordinates to a file. The options for file format are: BED and BED12."""
@@ -425,6 +448,8 @@ class GenCoorSet:
             GenCoorFileIO.Bed.write_from_gcs(self, filename)
         elif filetype == "BED12":
             GenCoorFileIO.Bed12.write_from_gcs(self, filename)
+        elif filetype == "BedGraph":
+            GenCoorFileIO.BedGraph.write_from_gcs(self, filename)
 
     def extend(self, str mode, int length, inplace=False):
         """Extend the genomic coordinates by certain length according to the given mode.
@@ -791,5 +816,17 @@ class GenCoorSet:
             res.list = list(set(self.list))
             return res
 
-
-    # def
+    def overlap_a_region(self, region, return_region=False):
+        """Return True when the given regino is overlapping with any regions in this GenCoorSet."""
+        if not return_region:
+            res = False
+            for r in self:
+                if r.overlap(region):
+                    res = True
+            return res
+        else:
+            res = None
+            for r in self:
+                if r.overlap(region):
+                    res = r
+            return res
