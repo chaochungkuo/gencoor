@@ -1,5 +1,7 @@
 from gencoor.exceptions import OverlapTypeError
 from gencoor.util import GenomeConfig
+import sys
+
 
 class GenCoorFileIO:
     class Bed:
@@ -842,3 +844,15 @@ class GenCoorSet:
                 if r.overlap(region):
                     res = r
             return res
+
+    def get_chromosomes(self, genome):
+        """Load the chromosome size into the GenCoorSet with the given genome name defined in the data.config"""
+        GConfig = GenomeConfig(genome)
+        if not GConfig:
+            print("The given genome is not defined in data.config")
+            sys.exit()
+        with open(GConfig.get_chromosome_sizes()) as f:
+            for line in f:
+                l = line.split()
+                self.add(GenCoor(chrom=l[0], start=0, end=l[1]))
+
