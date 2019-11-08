@@ -7,6 +7,7 @@ from tqdm import tqdm
 from gencoor.coordinates import GenCoorSet, GenCoor
 import pprint
 import sys
+import numpy as np
 
 class SignalProfile:
     def __init__(self, regions, bin=200, step=100):
@@ -16,6 +17,17 @@ class SignalProfile:
         self.step = step
         self.cov = {}
         self.file_path = {}
+
+    def load_files(self, labels, paths):
+        """Load each file according to the given labels and paths"""
+        for i, l in enumerate(labels):
+            p = paths[i]
+            if p.lower().endswith(".bam"):
+                self.load_bam(filename=p, label=l)
+            elif p.lower().endswith(".bigwig") or p.lower().endswith(".bw"):
+                self.load_bigwig(filename=p, label=l)
+            elif p.lower().endswith(".bedgraph"):
+                self.load_bedgraph(filename=p, label=l)
 
     def bam_read_pair_generator(self, bam, chrom, start, end):
         """Generate read pairs in a BAM file or within a region string. Reads are added to read_dict until a pair is found.
@@ -186,6 +198,49 @@ class SignalProfile:
         for k, v in factors.items():
             for r in self.regions:
                 self.cov[k][str(r)] = [j * float(v) for j in self.cov[k][str(r)]]
+
+    def norm_bakcground(self, lower_bound=0.05, upper_bound=0.5, bin=10000, genome=""):
+        """Normalize the coverage by removing the bins with values between the given lower bound and upper bound in percentage."""
+        # Getting background
+        if genome:
+            ref_back = GenCoorSet(name="background")
+            ref_back.get_chromosomes(genome=genome)
+            ref_back.standard_chromosome()
+            sig = SignalProfile(regions=ref_back, bin=bin, step=0)
+            sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()))
+        else:
+            sig = SignalProfile(regions=self.regions.list, bin=self.bin, step=self.step)
+            sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()))
+
+        # Get array
+        sc_dict = {}
+        cov_array = sig.cov2array()
+        for i, label in enumerate(self.cov.keys()):
+            cov = cov_array[i,:]
+            low_b = np.percentile(cov, lower_bound*100)
+            upp_b = np.percentile(cov, upper_bound * 100)
+            sc_dict[label] = np.sum(cov[cov > low_b & cov < upp_b])
+
+        # Get scaling factors
+        base = min(list(sc_dict.values()))
+        for k,v in sc_dict.items():
+            sc_dict[k] = base/v
+
+        
+
+
+    def cov2array(self):
+        """Return a dictionary with labels as the keys and the arrays of the coverage as the values."""
+        res = []
+        for lab, d in self.cov.items():
+            r = []
+            for v in list(d.values()):
+                r += v
+            res.append(r)
+        return np.array(res)
+
+
+
 
 
 

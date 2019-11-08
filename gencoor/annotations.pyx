@@ -137,3 +137,5 @@ class Annotation:
         promoters.relocate(mode='5end as 3end', width=length, inplace=True)
         promoters.name = self.name+"_promoters"
         return promoters
+
+
