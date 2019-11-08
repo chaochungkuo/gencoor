@@ -153,7 +153,7 @@ class SignalProfile:
                 ind_step = 0
                 if r not in self.cov[label].keys():
                     init_cov = True
-                    self.cov[label][r] = []
+                    self.cov[label][str(r)] = []
                 while win2 < r.end:
                     if GenCoor.overlap_pairing(r.chrom, win1, win2, r.strand,
                                                chroms[i], starts[i], ends[i], strands[i]):
@@ -161,9 +161,9 @@ class SignalProfile:
                     else:
                         c = float(0)
                     if init_cov:
-                        self.cov[label][r].append(c)
+                        self.cov[label][str(r)].append(c)
                     else:
-                        self.cov[label][r][ind_step] += c
+                        self.cov[label][str(r)][ind_step] += c
                     win1 += self.step
                     win2 += self.step
                     ind_step += 1
@@ -171,7 +171,7 @@ class SignalProfile:
             elif r > bg[i]:
                 i += 1
             elif r < bg[i]:
-                # self.cov[label][r] = [0] * (len(r)//self.step)
+                # self.cov[label][str(r)] = [0] * (len(r)//self.step)
                 j += 1
                 pbar.update(1)
             if i == len(bg):
