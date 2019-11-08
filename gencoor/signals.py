@@ -18,16 +18,16 @@ class SignalProfile:
         self.cov = {}
         self.file_path = {}
 
-    def load_files(self, labels, paths):
+    def load_files(self, labels, paths, disable_progressbar=False):
         """Load each file according to the given labels and paths"""
         for i, l in enumerate(labels):
             p = paths[i]
             if p.lower().endswith(".bam"):
-                self.load_bam(filename=p, label=l)
+                self.load_bam(filename=p, label=l, disable_progressbar=disable_progressbar)
             elif p.lower().endswith(".bigwig") or p.lower().endswith(".bw"):
-                self.load_bigwig(filename=p, label=l)
+                self.load_bigwig(filename=p, label=l, disable_progressbar=disable_progressbar)
             elif p.lower().endswith(".bedgraph"):
-                self.load_bedgraph(filename=p, label=l)
+                self.load_bedgraph(filename=p, label=l, disable_progressbar=disable_progressbar)
 
     def bam_read_pair_generator(self, bam, chrom, start, end):
         """Generate read pairs in a BAM file or within a region string. Reads are added to read_dict until a pair is found.
@@ -91,7 +91,7 @@ class SignalProfile:
     #             pos_right.append(read1.reference_start + read1.infer_query_length())
     #     return pos_left, pos_right
 
-    def load_bam(self, filename, label):
+    def load_bam(self, filename, label, disable_progressbar):
         """Load a BAM and calcualte the coverage on the defined genomic coordinates. If extenstion is not defined, the length of the paired reads will be calculated. extension is only used for single-end sequencing."""
         print("Loading BAM file " + filename)
         self.file_path[label] = filename
@@ -100,7 +100,7 @@ class SignalProfile:
         # average_frag_size = self.bam_detect_fragment_size(filename)
         # buffer_extesion = 300
         bam = pysam.AlignmentFile(filename, "rb")
-        pbar = tqdm(total=len(self.regions))
+        pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
         for r in self.regions:
             try:
                 win1 = r.start
@@ -116,12 +116,12 @@ class SignalProfile:
             pbar.update(1)
         pbar.close()
 
-    def load_bigwig(self, filename, label):
+    def load_bigwig(self, filename, label, disable_progressbar):
         print("Loading BigWig file " + filename)
         self.file_path[label] = filename
         self.cov[label] = {}
         bw = pyBigWig.open(filename)
-        pbar = tqdm(total=len(self.regions))
+        pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
         for r in self.regions:
             try:
                 win1 = r.start
@@ -141,7 +141,7 @@ class SignalProfile:
             pbar.update(1)
         pbar.close()
 
-    def load_bedgraph(self, filename, label):
+    def load_bedgraph(self, filename, label, disable_progressbar):
         print("Loading BedGraph file " + filename)
         self.file_path[label] = filename
         self.cov[label] = {}
@@ -152,7 +152,7 @@ class SignalProfile:
         i = 0
         j = 0
         loop_continue = True
-        pbar = tqdm(total=len(self.regions))
+        pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
 
         while loop_continue:
             r = self.regions[j]
@@ -199,7 +199,7 @@ class SignalProfile:
             for r in self.regions:
                 self.cov[k][str(r)] = [j * float(v) for j in self.cov[k][str(r)]]
 
-    def norm_bakcground(self, lower_bound=0.05, upper_bound=0.5, bin=10000, genome=""):
+    def norm_bakcground(self, lower_bound=0.05, upper_bound=0.5, bin=1000000, genome=""):
         """Normalize the coverage by removing the bins with values between the given lower bound and upper bound in percentage."""
         # Getting background
         if genome:
@@ -226,7 +226,7 @@ class SignalProfile:
         for k,v in sc_dict.items():
             sc_dict[k] = base/v
 
-        
+        print(sc_dict)
 
 
     def cov2array(self):
