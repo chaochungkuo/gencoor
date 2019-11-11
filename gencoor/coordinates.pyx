@@ -854,5 +854,5 @@ class GenCoorSet:
         with open(GConfig.get_chromosome_sizes()) as f:
             for line in f:
                 l = line.split()
-                self.add(GenCoor(chrom=l[0], start=0, end=l[1]))
+                self.add(GenCoor(chrom=l[0], start=0, end=int(l[1])))
 
