@@ -226,7 +226,7 @@ class SignalProfile:
         for k,v in sc_dict.items():
             sc_dict[k] = base/v
 
-        
+
 
 
     def cov2array(self):
