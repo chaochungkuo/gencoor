@@ -2,32 +2,53 @@
 import pysam
 import os
 import pyBigWig
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from tqdm import tqdm
+from gencoor.util import GenomeConfig
 from gencoor.coordinates import GenCoorSet, GenCoor
 import pprint
+from natsort import natsorted
 import sys
 import numpy as np
+import re
 
 class SignalProfile:
-    def __init__(self, regions, bin=200, step=100):
+    def __init__(self, regions, genome, bin=200, step=100):
         self.regions = regions
         self.regions.sort()
+        self.genome = genome
         self.bin = bin
         self.step = step
-        self.cov = {}
-        self.file_path = {}
+        self.cov = OrderedDict()
+        self.file_path = OrderedDict()
+        self.scaling_factor = OrderedDict()
 
-    def load_files(self, labels, paths, disable_progressbar=False):
+    def load_files(self, file_dict, disable_progressbar=False):
         """Load each file according to the given labels and paths"""
-        for i, l in enumerate(labels):
-            p = paths[i]
-            if p.lower().endswith(".bam"):
-                self.load_bam(filename=p, label=l, disable_progressbar=disable_progressbar)
-            elif p.lower().endswith(".bigwig") or p.lower().endswith(".bw"):
-                self.load_bigwig(filename=p, label=l, disable_progressbar=disable_progressbar)
-            elif p.lower().endswith(".bedgraph"):
-                self.load_bedgraph(filename=p, label=l, disable_progressbar=disable_progressbar)
+        for i, l in enumerate(list(file_dict.keys())):
+            p = file_dict[l]
+            vlist = list(self.file_path.values())
+            if p in vlist:
+                klist = list(self.file_path.keys())
+                self.file_path[l] = p
+                self.cov[l] = self.cov[klist[vlist.index(p)]]
+            else:
+                if p.lower().endswith(".bam"):
+                    self.load_bam(filename=p, label=l, disable_progressbar=disable_progressbar)
+                elif p.lower().endswith(".bigwig") or p.lower().endswith(".bw"):
+                    self.load_bigwig(filename=p, label=l, disable_progressbar=disable_progressbar)
+                elif p.lower().endswith(".bedgraph"):
+                    self.load_bedgraph(filename=p, label=l, disable_progressbar=disable_progressbar)
+
+    def get_chrom_size_tuples(self):
+        genome = GenomeConfig(genome=self.genome)
+        res = []
+        with open(genome.get_chromosome_sizes()) as f:
+            for line in f:
+                l = line.strip().split()
+                res.append((l[0], int(l[1])))
+        res = natsorted(res, key=lambda x: x[0])
+        return res
 
     def bam_read_pair_generator(self, bam, chrom, start, end):
         """Generate read pairs in a BAM file or within a region string. Reads are added to read_dict until a pair is found.
@@ -91,35 +112,52 @@ class SignalProfile:
     #             pos_right.append(read1.reference_start + read1.infer_query_length())
     #     return pos_left, pos_right
 
-    def load_bam(self, filename, label, disable_progressbar):
+    def load_bam(self, filename, label, disable_progressbar=False, progressbar_mode="region"):
         """Load a BAM and calcualte the coverage on the defined genomic coordinates. If extenstion is not defined, the length of the paired reads will be calculated. extension is only used for single-end sequencing."""
-        print("Loading BAM file " + filename)
+        print("Loading BAM file " + filename[-20:])
         self.file_path[label] = filename
-        self.cov[label] = {}
+        self.cov[label] = OrderedDict()
         # Detect fragment size
         # average_frag_size = self.bam_detect_fragment_size(filename)
         # buffer_extesion = 300
         bam = pysam.AlignmentFile(filename, "rb")
-        pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
+        if progressbar_mode=="region":
+            pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
         for r in self.regions:
-            try:
-                win1 = r.start
-                win2 = r.start + self.bin
-                self.cov[label][str(r)] = []
-                while win2 < r.end:
-                    c = self.bam_count_paired_reads(bam, r.chrom, win1-self.step, win2+self.step)
-                    self.cov[label][str(r)].append(c)
-                    win1 += self.step
-                    win2 += self.step
-            except:
-                pass
-            pbar.update(1)
-        pbar.close()
+            # try:
+            if progressbar_mode=="window":
+                print("Loading BAM file " + filename[-20:] + "\t" + r.chrom)
+                pbar = tqdm(total=len(r)//self.step+1, disable=disable_progressbar)
+            win1 = r.start
+            win2 = r.start + self.bin
+            self.cov[label][str(r)] = []
+            cont_loop = True
+            while cont_loop:
+                start = win1
+                # start = win1 - self.step
+                # if start < 0:
+                #     start = 0
+                # print([start, win2])
+                c = self.bam_count_paired_reads(bam, r.chrom, start, win2)
+                # print(c)
+                self.cov[label][str(r)].append(c)
+                win1 += self.step
+                win2 += self.step
+                if win1 > r.end:
+                    cont_loop = False
+                if progressbar_mode=="window":
+                    pbar.update(1)
+            # except:
+            #     pass
+            if progressbar_mode=="region":
+                pbar.update(1)
+            elif progressbar_mode=="window":
+                pbar.close()
 
-    def load_bigwig(self, filename, label, disable_progressbar):
-        print("Loading BigWig file " + filename)
+    def load_bigwig(self, filename, label, disable_progressbar=False):
+        print("Loading BigWig file " + filename[-20:])
         self.file_path[label] = filename
-        self.cov[label] = {}
+        self.cov[label] = OrderedDict()
         bw = pyBigWig.open(filename)
         pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
         for r in self.regions:
@@ -142,9 +180,9 @@ class SignalProfile:
         pbar.close()
 
     def load_bedgraph(self, filename, label, disable_progressbar):
-        print("Loading BedGraph file " + filename)
+        print("Loading BedGraph file " + filename[-20:])
         self.file_path[label] = filename
-        self.cov[label] = {}
+        self.cov[label] = OrderedDict()
         bg = GenCoorSet(name=label)
         bg.load(filename=filename, filetype="BedGraph")
         bg.sort()
@@ -199,54 +237,97 @@ class SignalProfile:
             for r in self.regions:
                 self.cov[k][str(r)] = [j * float(v) for j in self.cov[k][str(r)]]
 
-    def norm_bakcground(self, lower_bound=0.05, upper_bound=0.5, bin=1000000, genome=""):
+    def norm_bakcground(self, lower_bound=20, upper_bound=80, bin=10000, genome=""):
         """Normalize the coverage by removing the bins with values between the given lower bound and upper bound in percentage."""
         # Getting background
-        if genome:
-            ref_back = GenCoorSet(name="background")
-            ref_back.get_chromosomes(genome=genome)
-            ref_back.standard_chromosome()
-            sig = SignalProfile(regions=ref_back, bin=bin, step=0)
-            sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()))
-        else:
-            sig = SignalProfile(regions=self.regions.list, bin=self.bin, step=self.step)
-            sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()))
+        # if genome:
+        #     ref_back = GenCoorSet(name="background")
+        #     ref_back.get_chromosomes(genome=genome)
+        #     ref_back.filter_chromosome(chrom="chr22")
+        #     # ref_back.standard_chromosome()
+        #     # print(len(ref_back))
+        #     ref_back.segmentize(width=bin, inplace=True)
+        #     # print(len(ref_back))
+        #     sig = SignalProfile(regions=ref_back, bin=bin, step=bin)
+        #     sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()),
+        #                    disable_progressbar=False)
+        # else:
+        # sig = SignalProfile(regions=self.regions, bin=self.bin, step=self.step)
+        # sig.load_files(labels=self.file_path.keys(), paths=list(self.file_path.values()),
+        #                disable_progressbar=False)
 
         # Get array
-        sc_dict = {}
-        cov_array = sig.cov2array()
+        cov_array = self.cov2array()
+        # print(cov_array)
         for i, label in enumerate(self.cov.keys()):
             cov = cov_array[i,:]
-            low_b = np.percentile(cov, lower_bound*100)
-            upp_b = np.percentile(cov, upper_bound * 100)
-            sc_dict[label] = np.sum(cov[cov > low_b & cov < upp_b])
+            # print(cov)
+            low_b = np.percentile(cov[cov > 0], lower_bound)
+            upp_b = np.percentile(cov, upper_bound)
+            # print([low_b, upp_b])
+            self.scaling_factor[label] = np.sum(cov[(cov > low_b) & (cov < upp_b)])
 
         # Get scaling factors
-        base = min(list(sc_dict.values()))
-        for k,v in sc_dict.items():
-            sc_dict[k] = base/v
-
-<<<<<<< HEAD
-
-=======
-        print(sc_dict)
->>>>>>> ef9f06714f9fd0b89330497b82a2d0a6efa33b9a
+        base = min(list(self.scaling_factor.values()))
+        for k,v in self.scaling_factor.items():
+            self.scaling_factor[k] = base/v
+        print(self.scaling_factor)
+        self.normalize_by_scaling_factors(self.scaling_factor)
 
 
     def cov2array(self):
         """Return a dictionary with labels as the keys and the arrays of the coverage as the values."""
         res = []
         for lab, d in self.cov.items():
+            # print(d)
             r = []
             for v in list(d.values()):
                 r += v
             res.append(r)
         return np.array(res)
 
+    def cov2bigwig(self, cov, filename):
+        """Generate BigWig file from coverage profile"""
+        # Get Bedgraph
+        bg = [[], [], [], []]
+        for r in cov.keys():
+            l = re.split(":|-| ", r)
+            # print(l)
+            for i, s in enumerate(cov[r]):
+                bg[0].append(l[0]) # chrom
+                bg[1].append(int(l[1]) + i * self.step) # start
+                bg[2].append(int(l[1]) + (i+1) * self.step) # end
+                bg[3].append(float(s)) # score
+        bw = pyBigWig.open(filename, "w")
+        bw.addHeader(self.get_chrom_size_tuples())
+        bw.addEntries(chroms=bg[0], starts=bg[1], ends=bg[2], values=bg[3])
+        bw.close()
 
+    def cov2bedgraph(self, cov, filename):
+        """Generate BedGraph file from coverage profile"""
+        # Get Bedgraph
+        with open(filename, "w") as f:
+            for r in cov.keys():
+                l = re.split(":|-| ", r)
+                for i, s in enumerate(cov[r]):
+                    print("\t".join([l[0],
+                                     str(int(l[1]) + i * self.step),
+                                     str(int(l[1]) + (i+1) * self.step),
+                                     str(s)]), file=f)
 
+    def coverages2bigwigs(self, directory):
+        """Generate BigWig files for each sample"""
+        for lab in self.cov.keys():
+            print(lab)
+            self.cov2bedgraph(cov=self.cov[lab], filename=os.path.join(directory, lab+".bedgraph"))
+            self.cov2bigwig(cov=self.cov[lab], filename=os.path.join(directory, lab+".bw"))
 
-
+    def minus_coverage(self, cov_dict):
+        """Reduce the coverage by the given coverage dictionary which has the same labels as its keys."""
+        for lab in self.cov.keys():
+            for r in self.cov[lab].keys():
+                self.cov[lab][r] = [x1 - x2 for (x1, x2) in zip(self.cov[lab][r], cov_dict[lab][r])]
+                self.cov[lab][r] = [0 if i < 0 else i for i in self.cov[lab][r]]
 
     # def
 if __name__ == '__main__':
@@ -255,33 +336,35 @@ if __name__ == '__main__':
     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test", strand="."))
     # genset1.add(GenCoor(chrom="chr3_random", start=1, end=80, name="test", strand="."))
     # genset1.add(GenCoor(chrom="chr2", start=2, end=4, name="test2", strand="."))
-    # genset1 = GenCoorSet(name="Test_set")
-    # bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
-    # genset1.load(filename=bedfile, filetype="BED")
-    # genset1.relocate(mode="5end as 3end", width=2000)
-    # signal_profile = SignalProfile(regions=genset1)
-    # signal_profile.load_bam(filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/1_Alignment/bam_filtered/Y6.bam",
-    #                         label="bam")
+    genset1 = GenCoorSet(name="Test_set")
+    bedfile = os.path.join(os.getenv("HOME"), "gencoor_data/hg38/genes_hg38.bed")
+    genset1.load(filename=bedfile, filetype="BED")
+    genset1.relocate(mode="5end as 3end", width=2000)
+    genset1.list = genset1.list[0:100]
+    signal_profile = SignalProfile(regions=genset1, genome="hg38", bin=200, step=50)
+    signal_profile.load_bam(filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/1_Alignment/bam_filtered/Y6.bam",
+                            label="bam")
     # signal_profile.load_bigwig(
     #     filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/2_Peak_Calling/THOR_res_masked/CTCF_ChIPSeq-s1-rep1.bw",
     #     label="bw")
 
-    genset1 = GenCoorSet(name="Test_set")
-    genset1.load(filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson_hyper250.bed", filetype="BED")
-    genset1.relocate(mode="center as center", width=2000)
-    signal_profile = SignalProfile(regions=genset1)
-    signal_profile.load_bedgraph(
-        filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson.bedgraph",
-        label="bedgraph")
+    # signal_profile.coverages2bigwigs(directory="./")
+    # genset1 = GenCoorSet(name="Test_set")
+    # genset1.load(filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson_hyper250.bed", filetype="BED")
+    # genset1.relocate(mode="center as center", width=2000)
+    # signal_profile = SignalProfile(regions=genset1)
+    # signal_profile.load_bedgraph(
+    #     filename="/media/work_disk/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/bedgraph/GSE40279/GSE40279_pearson.bedgraph",
+    #     label="bedgraph")
     # sc = {"bam": 10, "bw": 0.5}
     # signal_profile.normalize_by_scaling_factors(factors=sc)
-
-    pp = pprint.PrettyPrinter(indent=4)
+    signal_profile.coverages2bigwigs(directory="/home/joseph/source_code/gencoor/test/diffpeaks")
+    # pp = pprint.PrettyPrinter(indent=4)
 
     # pp.pprint(signal_profile.cov["bam"])
     # pp.pprint(signal_profile.cov["bw"])
     # pp.pprint(signal_profile.cov["bedgraph"])
     # print(signal_profile.cov["bedgraph"])
-    for k, v in signal_profile.cov["bedgraph"].items():
-        if sum(v) != 0:
-            print(v)
+    # for k, v in signal_profile.cov["bedgraph"].items():
+    #     if sum(v) != 0:
+    #         print(v)

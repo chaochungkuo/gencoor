@@ -1,6 +1,7 @@
 from gencoor.exceptions import OverlapTypeError
 from gencoor.util import GenomeConfig
 import sys
+from natsort import natsorted, ns
 
 
 class GenCoorFileIO:
@@ -387,6 +388,24 @@ class GenCoor:
         if self.end > chrom_size[self.chrom]:
           self.end = chrom_size[self.chrom]
 
+    def segmentize(self, width):
+        """Segmentize the region according to the given width"""
+        if len(self) < width:
+            return None
+        else:
+            res = []
+            for i in range(len(self)//width):
+                res.append(GenCoor(chrom=self.chrom,
+                                   start=self.start + i * width,
+                                   end=self.start + (i+1) * width,
+                                   strand=self.strand))
+            i += 1
+            res.append(GenCoor(chrom=self.chrom,
+                               start=self.start + i * width,
+                               end=self.end,
+                               strand=self.strand))
+            return res
+
 class GenCoorSet:
     """A Python class for handling a set of genomic coordinates.
 
@@ -435,7 +454,8 @@ class GenCoorSet:
         start position and then end position. If inplace is set True, it sorts the genomic coordinates in place, \
         otherwise, it returns a sorted genomic coordinate set."""
         res = sorted(self.list, key=lambda x: x.start)
-        res = sorted(res, key=lambda x: x.chrom)
+        res = natsorted(res, key=lambda x: x.chrom, alg=ns.IGNORECASE)
+        # res = sorted(res, key=lambda x: x.chrom)
         if inplace:
             self.list = res
             self.sorted = True
@@ -856,3 +876,26 @@ class GenCoorSet:
                 l = line.split()
                 self.add(GenCoor(chrom=l[0], start=0, end=int(l[1])))
 
+    def segmentize(self, width, inplace=True):
+        """Segmentize each region with the given width."""
+        res = GenCoorSet(name=self.name)
+        for r in self:
+            segs = r.segmentize(width)
+            if segs:
+                for s in segs:
+                    res.add(s)
+        if inplace:
+            self.list = res.list
+        else:
+            return res
+
+    def filter_chromosome(self, chrom, inplace=True):
+        """Filter the regions by the given chromosome."""
+        res = GenCoorSet(name=self.name)
+        for r in self:
+            if r.chrom == chrom:
+                res.add(r)
+        if inplace:
+            self.list = res.list
+        else:
+            return res
