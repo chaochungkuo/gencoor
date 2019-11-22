@@ -41,6 +41,7 @@ class DiffPeakConfig():
         return res
 
 
+
 if __name__ == '__main__':
     arg = docopt(__doc__)
     if arg["diffpeak"]:
@@ -53,13 +54,14 @@ if __name__ == '__main__':
         #     filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/windows/66_CpGs.bed",
         #     filetype="BED")
         # genset1.relocate(mode="center as center", width=2000)
-        bin = 1000000
-        step = 500000
+        bin = 100
+        step = 50
         sig = SignalProfile(regions=ref_back, genome=config.genome(), bin=bin, step=step)
         sig.load_files(file_dict=config.files_dict)
 
         # Normalization
         # sig.norm_bakcground(genome="hg38")
+        sig.norm_library_size()
 
         # Input
         if "Input" in config.config.sections():

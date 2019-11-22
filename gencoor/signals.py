@@ -274,6 +274,18 @@ class SignalProfile:
         print(self.scaling_factor)
         self.normalize_by_scaling_factors(self.scaling_factor)
 
+    def norm_library_size(self):
+        """Normalize the coverage by simply the library size (total number of reads) of each sample. It is only applicable when all the input files are BAM files."""
+        read_counts = {}
+        for i, label in enumerate(self.cov.keys()):
+            read_counts[label] = self.bam_total_reads(self.file_path[label])
+        min_count = float(min(list(read_counts.values())))
+        for i, label in enumerate(self.cov.keys()):
+            self.scaling_factor[label] = min_count/read_counts[label]
+        print(self.scaling_factor)
+        self.normalize_by_scaling_factors(self.scaling_factor)
+
+
 
     def cov2array(self):
         """Return a dictionary with labels as the keys and the arrays of the coverage as the values."""
