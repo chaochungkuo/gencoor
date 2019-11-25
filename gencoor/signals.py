@@ -13,7 +13,7 @@ import numpy as np
 import re
 
 class SignalProfile:
-    def __init__(self, regions, genome, bin=200, step=100):
+    def __init__(self, regions, str genome, int bin=200, int step=100):
         self.regions = regions
         self.regions.sort()
         self.genome = genome

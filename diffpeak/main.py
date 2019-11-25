@@ -33,6 +33,12 @@ class DiffPeakConfig():
     def genome(self):
         return self.config["Parameters"]["genome"]
 
+    def bin_size(self):
+        return int(self.config["Parameters"]["bin_size"])
+
+    def step_size(self):
+        return int(self.config["Parameters"]["step_size"])
+
     def get_inputs(self):
         res = {}
         if "Input" in self.config.sections():
@@ -48,15 +54,8 @@ if __name__ == '__main__':
         config = DiffPeakConfig(filepath=arg["<config_file>"])
         ref_back = GenCoorSet(name="background")
         ref_back.get_chromosomes(genome=config.genome())
-        #
-        # genset1 = GenCoorSet(name="Test_set")
-        # genset1.load(
-        #     filename="/projects/epi_aging_signature/exp/CTCF_ChIPSeq_analysis_UKA/3_Peaks_analysis/windows/66_CpGs.bed",
-        #     filetype="BED")
-        # genset1.relocate(mode="center as center", width=2000)
-        bin = 100
-        step = 50
-        sig = SignalProfile(regions=ref_back, genome=config.genome(), bin=bin, step=step)
+        sig = SignalProfile(regions=ref_back, genome=config.genome(),
+                            bin=config.bin_size(), step=config.step_size())
         sig.load_files(file_dict=config.files_dict)
 
         # Normalization
@@ -65,7 +64,8 @@ if __name__ == '__main__':
 
         # Input
         if "Input" in config.config.sections():
-            sig2 = SignalProfile(regions=ref_back, genome=config.genome(), bin=bin, step=step)
+            sig2 = SignalProfile(regions=ref_back, genome=config.genome(),
+                                 bin=config.bin_size(), step=config.step_size())
             sig2.load_files(file_dict=config.files_dict)
             sig.minus_coverage(sig2.cov)
         sig.coverages2bigwigs(directory=arg["<output_directory>"])
