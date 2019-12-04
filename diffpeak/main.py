@@ -66,7 +66,7 @@ if __name__ == '__main__':
         if "Input" in config.config.sections():
             sig2 = SignalProfile(regions=ref_back, genome=config.genome(),
                                  bin=config.bin_size(), step=config.step_size())
-            sig2.load_files(file_dict=config.files_dict)
+            sig2.load_files(file_dict=config.get_inputs())
             sig.minus_coverage(sig2.cov)
         sig.coverages2bigwigs(directory=arg["<output_directory>"])
 

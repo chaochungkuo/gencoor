@@ -25,6 +25,9 @@ class SignalProfile:
 
     def load_files(self, file_dict, disable_progressbar=False):
         """Load each file according to the given labels and paths"""
+        cdef str p
+        cdef int i
+        cdef str l
         for i, l in enumerate(list(file_dict.keys())):
             p = file_dict[l]
             vlist = list(self.file_path.values())
@@ -41,6 +44,7 @@ class SignalProfile:
                     self.load_bedgraph(filename=p, label=l, disable_progressbar=disable_progressbar)
 
     def get_chrom_size_tuples(self):
+        cdef str line
         genome = GenomeConfig(genome=self.genome)
         res = []
         with open(genome.get_chromosome_sizes()) as f:
@@ -50,9 +54,10 @@ class SignalProfile:
         res = natsorted(res, key=lambda x: x[0])
         return res
 
-    def bam_read_pair_generator(self, bam, chrom, start, end):
+    def bam_read_pair_generator(self, bam, str chrom, int start, int end):
         """Generate read pairs in a BAM file or within a region string. Reads are added to read_dict until a pair is found.
         """
+        cdef str qname
         read_dict = defaultdict(lambda: [None, None])
         fetch_reads = bam.fetch(chrom, start, end)
         for read in fetch_reads:
@@ -72,14 +77,15 @@ class SignalProfile:
                 del read_dict[qname]
         return read_dict
 
-    def bam_total_reads(self, filename):
+    def bam_total_reads(self, str filename):
         idxstats= pysam.idxstats(filename).split("\n")
         idxstats = [l.split() for l in idxstats if l]
         return sum([int(l[2]) + int(l[3]) for l in idxstats])
 
-    def bam_detect_fragment_size(self, filename):
+    def bam_detect_fragment_size(self, str filename):
         """Detect the average length of the fragment from the paired-end reads. (Only used for paired-end bamfiles)"""
         print("Detecting fragment size...", end="", flush=True)
+        cdef int l
         length_list = []
         total_reads = self.bam_total_reads(filename)
         bam = pysam.AlignmentFile(filename, "rb")
@@ -91,9 +97,9 @@ class SignalProfile:
             length_list.append(l)
         return sum(length_list)/len(length_list)
 
-    def bam_count_paired_reads(self, bam, chrom, start, end):
+    def bam_count_paired_reads(self, bam, str chrom, int start, int end):
         """Return the position of left end and right end of the fragment (including read1 and read2). (Only used for paired-end bamfiles)"""
-        c = 0
+        cdef int c = 0
         for read1, read2 in self.bam_read_pair_generator(bam, chrom, start, end):
             c += 1
         # print(c)
@@ -112,9 +118,14 @@ class SignalProfile:
     #             pos_right.append(read1.reference_start + read1.infer_query_length())
     #     return pos_left, pos_right
 
-    def load_bam(self, filename, label, disable_progressbar=False, progressbar_mode="region"):
+    def load_bam(self, str filename, str label, disable_progressbar=False, str progressbar_mode="region"):
         """Load a BAM and calcualte the coverage on the defined genomic coordinates. If extenstion is not defined, the length of the paired reads will be calculated. extension is only used for single-end sequencing."""
-        print("Loading BAM file " + filename[-20:])
+        print("Loading BAM file ..." + filename[-30:])
+
+        cdef int win1
+        cdef int win2
+        cdef int c
+
         self.file_path[label] = filename
         self.cov[label] = OrderedDict()
         # Detect fragment size
@@ -126,7 +137,7 @@ class SignalProfile:
         for r in self.regions:
             # try:
             if progressbar_mode=="window":
-                print("Loading BAM file " + filename[-20:] + "\t" + r.chrom)
+                print("Loading BAM file ..." + filename[-30:] + "\t" + r.chrom)
                 pbar = tqdm(total=len(r)//self.step+1, disable=disable_progressbar)
             win1 = r.start
             win2 = r.start + self.bin
@@ -154,8 +165,13 @@ class SignalProfile:
             elif progressbar_mode=="window":
                 pbar.close()
 
-    def load_bigwig(self, filename, label, disable_progressbar=False):
-        print("Loading BigWig file " + filename[-20:])
+    def load_bigwig(self, str filename, str label, disable_progressbar=False):
+        print("Loading BigWig file ..." + filename[-30:])
+
+        cdef int win1
+        cdef int win2
+        cdef int c
+
         self.file_path[label] = filename
         self.cov[label] = OrderedDict()
         bw = pyBigWig.open(filename)
@@ -179,8 +195,15 @@ class SignalProfile:
             pbar.update(1)
         pbar.close()
 
-    def load_bedgraph(self, filename, label, disable_progressbar):
-        print("Loading BedGraph file " + filename[-20:])
+    def load_bedgraph(self, str filename, str label, disable_progressbar=False):
+        print("Loading BedGraph file ..." + filename[-30:])
+        cdef int i
+        cdef int j
+        cdef int win1
+        cdef int win2
+        cdef float c
+        cdef int ind_step
+
         self.file_path[label] = filename
         self.cov[label] = OrderedDict()
         bg = GenCoorSet(name=label)
@@ -233,6 +256,10 @@ class SignalProfile:
 
     def normalize_by_scaling_factors(self, factors):
         """Rescale the coverage by the given scaling facotrs. The input factors is a dictionary with label as the key and scaling factor as the value."""
+        cdef str k
+        cdef float v
+        cdef float j
+
         for k, v in factors.items():
             for r in self.regions:
                 self.cov[k][str(r)] = [j * float(v) for j in self.cov[k][str(r)]]
@@ -276,6 +303,10 @@ class SignalProfile:
 
     def norm_library_size(self):
         """Normalize the coverage by simply the library size (total number of reads) of each sample. It is only applicable when all the input files are BAM files."""
+        cdef int i
+        cdef str label
+        cdef float min_count
+
         read_counts = {}
         for i, label in enumerate(self.cov.keys()):
             read_counts[label] = self.bam_total_reads(self.file_path[label])
@@ -289,6 +320,7 @@ class SignalProfile:
 
     def cov2array(self):
         """Return a dictionary with labels as the keys and the arrays of the coverage as the values."""
+        cdef str lab
         res = []
         for lab, d in self.cov.items():
             # print(d)
@@ -300,6 +332,8 @@ class SignalProfile:
 
     def cov2bigwig(self, cov, filename):
         """Generate BigWig file from coverage profile"""
+        cdef int i
+        cdef float s
         # Get Bedgraph
         bg = [[], [], [], []]
         for r in cov.keys():
@@ -329,6 +363,8 @@ class SignalProfile:
 
     def coverages2bigwigs(self, directory):
         """Generate BigWig files for each sample"""
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         for lab in self.cov.keys():
             print(lab)
             self.cov2bedgraph(cov=self.cov[lab], filename=os.path.join(directory, lab+".bedgraph"))

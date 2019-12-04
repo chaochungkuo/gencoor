@@ -2,6 +2,7 @@ from gencoor.exceptions import OverlapTypeError
 from gencoor.util import GenomeConfig
 import sys
 from natsort import natsorted, ns
+import math
 
 
 class GenCoorFileIO:
@@ -212,10 +213,10 @@ class GenCoor:
 
     def str_split(self, filetype="BED"):
         if filetype=="BED":
-            return("/t".join([self.chrom, str(self.start), str(self.end),
+            return("\t".join([self.chrom, str(self.start), str(self.end),
                               self.name, str(self.score), self.strand]))
         else:
-            return ("/t".join([self.chrom, str(self.start), str(self.end),
+            return ("\t".join([self.chrom, str(self.start), str(self.end),
                                self.name, str(self.score), self.strand,
                                self.data]))
 
@@ -899,3 +900,22 @@ class GenCoorSet:
             self.list = res.list
         else:
             return res
+
+    def distances(self, gcs, sign=False):
+        """Return a list of distances of each region in Self to the closest region in the given GenCoorSet."""
+        dis = []
+        for r in self:
+            dis.append(gcs.distance(r, sign=sign))
+        return dis
+
+    def distance(self, region, sign=False):
+        """Return the distance between the given region with the closest region of the self."""
+        dis = None
+        for r in self:
+            if r.chrom == region.chrom:
+                d = r.distance(region, sign=sign)
+                if not dis:
+                    dis = d
+                elif abs(d) < abs(dis):
+                    dis = d
+        return dis

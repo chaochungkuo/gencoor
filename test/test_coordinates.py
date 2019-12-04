@@ -671,4 +671,33 @@ def test_rm_duplicates2():
     res = genset1.rm_duplicates(inplace=False)
     assert len(res) == 4
 
-# os.system("bash <(curl -s https://codecov.io/bash) -t f34d6638-3e35-4782-98ac-8f355151c2fe")
+def test_distance1():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=20, end=24, name="test", strand="."))
+    g = GenCoor(chrom="chr1", start=7, end=10, name="test", strand=".")
+    res = genset1.distance(g, sign=False)
+    assert res == 2
+
+def test_distance2():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=20, end=24, name="test", strand="."))
+    g = GenCoor(chrom="chr1", start=7, end=19, name="test", strand=".")
+    res = genset1.distance(g, sign=False)
+    assert res == 1
+
+def test_distances1():
+    genset1 = GenCoorSet(name="Test_set")
+    genset1.add(GenCoor(chrom="chr1", start=1, end=5, name="test", strand="."))
+    genset1.add(GenCoor(chrom="chr1", start=80, end=84, name="test", strand="."))
+    genset2 = GenCoorSet(name="Test_set")
+    genset2.add(GenCoor(chrom="chr1", start=10, end=15, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=60, end=64, name="test", strand="."))
+    genset2.add(GenCoor(chrom="chr1", start=160, end=164, name="test", strand="."))
+    res = genset1.distances(genset2, sign=False)
+    print(res)
+    assert len(res) == 2
+    assert res == [5, 16]
+
+os.system("bash <(curl -s https://codecov.io/bash) -t f34d6638-3e35-4782-98ac-8f355151c2fe")
