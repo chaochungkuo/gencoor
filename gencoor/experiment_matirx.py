@@ -7,14 +7,14 @@ class ExpMatrix:
         self.names = []
         self.types = {}
         self.files = {}
-        self.labels = {}
+        # self.labels = {}
         self.headers = []
         self.additional_columns = {}
         self.tags = {}
 
     def read(self, path):
 
-        fixed_headers = ["name", "type", "file", "label"]
+        fixed_headers = ["name", "type", "file"]
         fixed_idx = {}
         with open(path) as f:
             for i, line in enumerate(f):
@@ -36,7 +36,7 @@ class ExpMatrix:
                         self.names.append(new_name)
                         self.types[new_name] = l[fixed_idx["type"]]
                         self.files[new_name] = l[fixed_idx["file"]]
-                        self.labels[new_name] = l[fixed_idx["label"]]
+                        # self.labels[new_name] = l[fixed_idx["label"]]
                         ll = list(set(range(len(l))) - set(fixed_idx.values()))
                         # print(range(len(l)))
                         # print()
@@ -57,13 +57,15 @@ class ExpMatrix:
             if self.headers:
                 for h in self.headers:
                     self.tags[n].append(self.additional_columns[h][n])
+            self.tags[n].append(self.types[n])
+            # self.tags[n].append(self.labels[n])
             self.tags[n] = set(self.tags[n])
 
     def remove_a_name(self, name):
         self.names.remove(name)
         del self.types[name]
         del self.files[name]
-        del self.labels[name]
+        # del self.labels[name]
         if self.headers:
             for h in self.additional_columns.keys():
                 del self.additional_columns[h][name]
@@ -72,7 +74,7 @@ class ExpMatrix:
         self.names.append(new_name)
         self.types[new_name] = self.types[name]
         self.files[new_name] = self.files[name]
-        self.labels[new_name] = self.labels[name]
+        # self.labels[new_name] = self.labels[name]
         if self.headers:
             for h in self.additional_columns.keys():
                 self.additional_columns[h][new_name] = self.additional_columns[h][name]
@@ -128,9 +130,9 @@ class ExpMatrix:
 
     def print(self):
         print("####################################")
-        print("\t".join(["name", "type", "file", "label"] + self.headers))
+        print("\t".join(["name", "type", "file"] + self.headers))
         for name in self.names:
-            print("\t".join([name, self.types[name], self.files[name], self.labels[name]] +
+            print("\t".join([name, self.types[name], self.files[name]] +
                             [self.additional_columns[h][name] for h in self.headers]))
         print("####################################")
 
@@ -139,18 +141,32 @@ class ExpMatrix:
         if header in self.headers:
             for name in self.names:
                 tag = self.additional_columns[header][name]
-                if tag != ".":
+                if tag != "." and tag not in res:
                     res.append(tag)
+        elif header == "regions":
+            res = self.get_regions()
+        elif header == "signals":
+            res = self.get_signals()
         else:
-            res = [None]
-        return list(set(res))
+            res = [""]
+        return res
 
     def filter_by_tags(self, tags):
         res = []
+        cue = [t for t in tags if t != ""]
+        # print("cue: "+ " ".join(cue))
+        # print(self.tags)
         for name in self.names:
-            if set(tags) in set(self.tags[name]):
+            if set(cue) <= set(self.tags[name]):
                 res.append(name)
         return res
+
+    def get_file(self, name):
+        return self.files[name]
+    #
+    # def get_label(self, name):
+    #     return self.labels[name]
+
 
 
 

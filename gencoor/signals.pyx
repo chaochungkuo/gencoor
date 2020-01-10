@@ -321,14 +321,20 @@ class SignalProfile:
     def cov2array(self):
         """Return a dictionary with labels as the keys and the arrays of the coverage as the values."""
         cdef str lab
-        res = []
+        cdef str k
+        res = {}
         for lab, d in self.cov.items():
             # print(d)
-            r = []
-            for v in list(d.values()):
-                r += v
-            res.append(r)
-        return np.array(res)
+            res[lab] = []
+            for k, r in d.items():
+                res[lab].append(r)
+            res[lab] = np.array(res[lab])
+            # r = []
+            # for v in list(d.values()):
+            #     r += v
+            # res.append(r)
+            # print(res[lab])
+        return res
 
     def cov2bigwig(self, cov, filename):
         """Generate BigWig file from coverage profile"""
