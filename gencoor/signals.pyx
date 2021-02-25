@@ -11,9 +11,31 @@ from natsort import natsorted
 import sys
 import numpy as np
 import re
+from multiprocessing import Pool
+
+def worker_parse_bigwig(input):
+    import pyBigWig
+    region = input[0]
+    bin = input[1]
+    step = input[2]
+    bwfile = input[3]
+    win1 = region.start
+    win2 = region.start + bin
+    cov = []
+    bw = pyBigWig.open(bwfile)
+    while win2 < region.end:
+        c = bw.stats(region.chrom, win1, win2, type="mean")[0]
+        # print(c)
+        if not c:
+            c = 0
+        cov.append(c)
+        win1 += step
+        win2 += step
+    bw.close()
+    return cov
 
 class SignalProfile:
-    def __init__(self, regions, str genome, int bin=200, int step=100):
+    def __init__(self, regions, str genome, int bin=200, int step=100, int cores=1):
         self.regions = regions
         self.regions.sort()
         self.genome = genome
@@ -22,6 +44,7 @@ class SignalProfile:
         self.cov = OrderedDict()
         self.file_path = OrderedDict()
         self.scaling_factor = OrderedDict()
+        self.cores = cores
 
     def load_files(self, file_dict, disable_progressbar=False):
         """Load each file according to the given labels and paths"""
@@ -105,6 +128,23 @@ class SignalProfile:
         # print(c)
         return c
 
+    def bam_count_reads(self, bam, str chrom, int start, int end):
+        """Return the number of reads without extenstion"""
+        cdef int c = 0
+        c = len([r for r in bam.fetch(chrom, start, end)])
+        # print(c)
+        return c
+
+    def bam_check_pairedends(self, bam):
+        pairedend = False
+        cdef int limit = 100
+        for i, read in enumerate(bam.fetch()):
+            if read.is_paired:
+                pairedend = True
+                return pairedend
+            elif i == limit:
+                return pairedend
+
     # def bam_get_paired_reads_positions(self, bam, chrom, start, end):
     #     """Return the position of left end and right end of the fragment (including read1 and read2). (Only used for paired-end bamfiles)"""
     #     pos_left = []
@@ -118,9 +158,11 @@ class SignalProfile:
     #             pos_right.append(read1.reference_start + read1.infer_query_length())
     #     return pos_left, pos_right
 
-    def load_bam(self, str filename, str label, disable_progressbar=False, str progressbar_mode="region"):
+
+    def load_bam(self, str filename, str label, disable_progressbar=False, str progressbar_mode="region", verbal=True):
         """Load a BAM and calcualte the coverage on the defined genomic coordinates. If extenstion is not defined, the length of the paired reads will be calculated. extension is only used for single-end sequencing."""
-        print("Loading BAM file ..." + filename[-30:])
+        if verbal:
+            print("Loading BAM file ..." + filename[-30:])
 
         cdef int win1
         cdef int win2
@@ -132,6 +174,7 @@ class SignalProfile:
         # average_frag_size = self.bam_detect_fragment_size(filename)
         # buffer_extesion = 300
         bam = pysam.AlignmentFile(filename, "rb")
+
         if progressbar_mode=="region":
             pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
         for r in self.regions:
@@ -145,11 +188,12 @@ class SignalProfile:
             cont_loop = True
             while cont_loop:
                 start = win1
-                # start = win1 - self.step
-                # if start < 0:
-                #     start = 0
-                # print([start, win2])
-                c = self.bam_count_paired_reads(bam, r.chrom, start, win2)
+
+                # Check paired ends
+                if self.bam_check_pairedends(bam):
+                    c = self.bam_count_paired_reads(bam, r.chrom, start, win2)
+                else:
+                    c = self.bam_count_reads(bam, r.chrom, start, win2)
                 # print(c)
                 self.cov[label][str(r)].append(c)
                 win1 += self.step
@@ -165,8 +209,9 @@ class SignalProfile:
             elif progressbar_mode=="window":
                 pbar.close()
 
-    def load_bigwig(self, str filename, str label, disable_progressbar=False):
-        print("Loading BigWig file ..." + filename[-30:])
+    def load_bigwig(self, str filename, str label, disable_progressbar=False, verbal=True):
+        if verbal:
+            print("Loading BigWig file ..." + filename[-30:])
 
         cdef int win1
         cdef int win2
@@ -174,15 +219,33 @@ class SignalProfile:
 
         self.file_path[label] = filename
         self.cov[label] = OrderedDict()
-        bw = pyBigWig.open(filename)
-        pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
-        for r in self.regions:
-            try:
+
+        if self.cores > 1:
+            p = Pool(processes=self.cores)
+            cov = p.map(worker_parse_bigwig, [[r, self.bin, self.step, filename] for r in self.regions])
+            p.close()
+
+            for i, r in enumerate(self.regions):
+                self.cov[label][str(r)] = cov[i]
+
+        else:
+            bw = pyBigWig.open(filename)
+            pbar = tqdm(total=len(self.regions), disable=disable_progressbar)
+            for r in self.regions:
+                # try:
                 win1 = r.start
                 win2 = r.start + self.bin
                 self.cov[label][str(r)] = []
                 while win2 < r.end:
-                    c = bw.stats(r.chrom, win1, win2, type="mean")[0]
+                    try:
+                        c = bw.stats(r.chrom, win1, win2, type="mean")[0]
+                    except:
+                        print("pyBigWig error: ", ",".join([r.chrom, str(win1), str(win2)]))
+                        c = 0
+                        self.cov[label][str(r)].append(c)
+                        win1 += self.step
+                        win2 += self.step
+
                     # print(c)
                     if not c:
                         c = 0
@@ -190,10 +253,12 @@ class SignalProfile:
                     win1 += self.step
                     win2 += self.step
 
-            except:
-                pass
-            pbar.update(1)
-        pbar.close()
+                # except:
+                #     pass
+
+                pbar.update(1)
+            pbar.close()
+            bw.close()
 
     def load_bedgraph(self, str filename, str label, disable_progressbar=False):
         print("Loading BedGraph file ..." + filename[-30:])

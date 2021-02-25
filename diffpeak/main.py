@@ -71,6 +71,10 @@ if __name__ == '__main__':
         sig.coverages2bigwigs(directory=arg["<output_directory>"])
 
         # Detecting diff. peaks
+    elif arg["bam2bw"]:
+        sig = SignalProfile(regions=ref_back, genome=config.genome(),
+                            bin=config.bin_size(), step=config.step_size())
+
 
 
 

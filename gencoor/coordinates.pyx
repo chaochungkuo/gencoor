@@ -24,8 +24,13 @@ class GenCoorFileIO:
                     line = line.strip()
                     if not line.startswith("#"):
                         l = line.split()
-                        gcs.add(GenCoor(chrom=l[0], start=int(l[1]), end=int(l[2]),
-                                        name=l[3], score=l[4], strand=l[5], data="/t".join(l[6:])))
+                        if len(l) == 3:
+                            gcs.add(GenCoor(chrom=l[0], start=int(l[1]), end=int(l[2])))
+                        elif len(l) == 4:
+                            gcs.add(GenCoor(chrom=l[0], start=int(l[1]), end=int(l[2]), name=l[3]))
+                        else:
+                            gcs.add(GenCoor(chrom=l[0], start=int(l[1]), end=int(l[2]),
+                                            name=l[3], score=l[4], strand=l[5], data="/t".join(l[6:])))
 
         @staticmethod
         def write_from_gcs(gcs, str filename, str mode="w"):
